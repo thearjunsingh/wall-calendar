@@ -71,6 +71,9 @@ h2{font-size:28px;font-weight:700}
 .dots{display:flex;gap:10px;align-items:center;min-height:56px}
 .dots i{width:10px;height:10px;border-radius:50%;background:#C9D1CC;transition:background .2s,width .2s}
 .dots i.on{width:28px;border-radius:5px;background:var(--accent)}
+.dots.many{gap:6px}
+.dots.many i{width:8px;height:8px}
+.dots.many i.on{width:22px;border-radius:4px}
 .days{touch-action:none;will-change:transform}
 .week{overflow:hidden}
 .ev,.ad,.tlist li,.dcol{cursor:pointer}
@@ -460,6 +463,7 @@ body.portrait .nclock{font-size:190px}
     var dots = '', mp = maxPage(now);
     for (var k = 0; k <= mp; k++) dots += '<i' + (k === S.page ? ' class="on"' : '') + '></i>';
     $('dots').innerHTML = dots;
+    $('dots').classList.toggle('many', mp > 9);
     for (var d = first; d < first + 6; d++) {
       var day = addDays(sod(now), d), evs = eventsOn(day), f = dailyFor(day), wi = f ? wxInfo(f.code, 1) : null;
       var items = evs.map(function (e) {
@@ -561,7 +565,7 @@ body.portrait .nclock{font-size:190px}
     // how far ahead the relay sent events (older relays: one extra page)
     if (!S.through) return 1;
     var last = Math.round((S.through - sod(now)) / 864e5) - 1;
-    return Math.max(0, Math.floor((last - 1) / 6));
+    return Math.max(0, Math.floor((last - 6) / 6));   // only pages that are fully covered
   }
   function rangeLabel(a, b) {
     var ma = MON[a.getMonth()].slice(0, 3), mb = MON[b.getMonth()].slice(0, 3);
