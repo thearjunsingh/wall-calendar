@@ -68,10 +68,11 @@ h2{font-size:28px;font-weight:700}
 .more{font-size:18px;font-weight:600;color:var(--muted)}
 .week{display:flex;flex-direction:column;gap:14px;min-height:0}
 .weekhead{display:flex;justify-content:space-between;align-items:center;margin-top:-8px}
-.nav{display:flex;gap:12px}
-.arrow{width:56px;height:56px;border-radius:50%;border:none;background:var(--card);color:var(--ink);display:grid;place-items:center;padding:0;cursor:pointer}
-.arrow svg{width:28px;height:28px}
-.arrow:disabled{opacity:.3}
+.dots{display:flex;gap:10px;align-items:center;min-height:56px}
+.dots i{width:10px;height:10px;border-radius:50%;background:#C9D1CC;transition:background .2s,width .2s}
+.dots i.on{width:28px;border-radius:5px;background:var(--accent)}
+.days{touch-action:none;will-change:transform}
+.week{overflow:hidden}
 .ev,.ad,.tlist li,.dcol{cursor:pointer}
 .ev:active,.ad:active,.tlist li:active{filter:brightness(.93)}
 
@@ -177,7 +178,7 @@ body.portrait .nclock{font-size:190px}
         </div>
       </div>
       <section class="week">
-        <div class="weekhead"><h2 id="weekTitle">This week</h2><div class="nav"><button class="arrow" id="prev" data-act="prev" aria-label="Earlier days"></button><button class="arrow" id="next" data-act="next" aria-label="Later days"></button></div></div>
+        <div class="weekhead"><h2 id="weekTitle">This week</h2><div class="dots" id="dots" aria-hidden="true"></div></div>
         <div class="days" id="days"></div>
       </section>
     </main>
@@ -456,8 +457,9 @@ body.portrait .nclock{font-size:190px}
     S.page = Math.min(S.page, maxPage(now));
     first = 1 + S.page * 6;
     $('weekTitle').textContent = S.page === 0 ? 'This week' : rangeLabel(addDays(sod(now), first), addDays(sod(now), first + 5));
-    $('prev').disabled = S.page === 0;
-    $('next').disabled = S.page >= maxPage(now);
+    var dots = '', mp = maxPage(now);
+    for (var k = 0; k <= mp; k++) dots += '<i' + (k === S.page ? ' class="on"' : '') + '></i>';
+    $('dots').innerHTML = dots;
     for (var d = first; d < first + 6; d++) {
       var day = addDays(sod(now), d), evs = eventsOn(day), f = dailyFor(day), wi = f ? wxInfo(f.code, 1) : null;
       var items = evs.map(function (e) {
@@ -513,7 +515,7 @@ body.portrait .nclock{font-size:190px}
     var portrait = innerHeight > innerWidth;
     document.body.classList.toggle('portrait', portrait);
     var W = portrait ? 1024 : 1366, H = portrait ? 1366 : 1024;
-    var s = Math.min(innerWidth / W, innerHeight / H);
+    var s = Math.min(innerWidth / W, innerHeight / H); S.scale = s;
     $('stage').style.transform = 'translate(-50%,-50%) scale(' + s + ')';
     render();
   }
@@ -566,10 +568,8 @@ body.portrait .nclock{font-size:190px}
     return ma + ' ' + a.getDate() + ' – ' + (ma === mb ? '' : mb + ' ') + b.getDate();
   }
   var CHEV_L = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>';
-  var CHEV_R = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>';
   var X_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
   var PIN = '<svg viewBox="0 0 24 24" fill="none" stroke="#5A6660" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.5"/></svg>';
-  $('prev').innerHTML = CHEV_L; $('next').innerHTML = CHEV_R;
 
   // ---------- details sheet ----------
   function longDate(d) { return DOW[d.getDay()] + ', ' + MON[d.getMonth()].slice(0, 3) + ' ' + d.getDate(); }
@@ -609,6 +609,50 @@ body.portrait .nclock{font-size:190px}
   }
   function onIdle() { closeSheet(); if (S.page !== 0) { S.page = 0; render(); } }
 
+  // ---------- swipe the week ----------
+  S.swipedAt = 0;
+  (function () {
+    var box = $('days'), drag = null, EASE = 'transform .22s ease-out';
+    function setX(x, anim) { box.style.transition = anim ? EASE : 'none'; box.style.transform = x ? 'translateX(' + x + 'px)' : ''; }
+    function done() { drag = null; }
+    box.addEventListener('pointerdown', function (e) {
+      if (!e.isPrimary || drag) return;
+      drag = { x: e.clientX, y: e.clientY, dx: 0, moving: false, id: e.pointerId };
+    });
+    box.addEventListener('pointermove', function (e) {
+      if (!drag || e.pointerId !== drag.id) return;
+      var dx = (e.clientX - drag.x) / (S.scale || 1), dy = (e.clientY - drag.y) / (S.scale || 1);
+      if (!drag.moving) {
+        if (Math.abs(dx) < 12 || Math.abs(dx) < Math.abs(dy)) return;
+        drag.moving = true;
+        try { box.setPointerCapture(e.pointerId); } catch (err) {}
+      }
+      // resist at either end
+      var atEdge = (dx > 0 && S.page === 0) || (dx < 0 && S.page >= maxPage(new Date()));
+      drag.dx = dx;
+      setX(atEdge ? dx * 0.25 : dx, false);
+    });
+    function release(e) {
+      if (!drag || e.pointerId !== drag.id) return;
+      var d = drag; done();
+      if (!d.moving) return;
+      S.swipedAt = Date.now();
+      clearTimeout(idleTimer); idleTimer = setTimeout(onIdle, IDLE_RESET);
+      var w = box.offsetWidth + 40, dir = d.dx < -80 ? 1 : d.dx > 80 ? -1 : 0;
+      var target = S.page + dir;
+      if (!dir || target < 0 || target > maxPage(new Date())) { setX(0, true); return; }
+      setX(-dir * w, true);
+      setTimeout(function () {
+        S.page = target; render();
+        setX(dir * w, false);
+        void box.offsetWidth;   // let the browser place it before sliding in
+        setX(0, true);
+      }, 200);
+    }
+    box.addEventListener('pointerup', release);
+    box.addEventListener('pointercancel', function (e) { if (drag && e.pointerId === drag.id) { done(); setX(0, true); } });
+  })();
+
   // ---------- keep it alive ----------
   var wakeLock = null;
   function keepAwake() {
@@ -618,6 +662,7 @@ body.portrait .nclock{font-size:190px}
 
   $('stage').addEventListener('click', function (ev) {
     if (document.body.classList.contains('is-night') && FORCE !== 'night') { S.wakeUntil = Date.now() + WAKE_FOR; render(); return; }
+    if (Date.now() < S.swipedAt + 400) return;
     // after a minute and a half of no taps, close details and go back to this week
     clearTimeout(idleTimer); idleTimer = setTimeout(onIdle, IDLE_RESET);
     var t = ev.target, act = t.closest('[data-act]'), item = t.closest('[data-i]'), day = t.closest('[data-day]');
@@ -625,8 +670,6 @@ body.portrait .nclock{font-size:190px}
       var a = act.getAttribute('data-act');
       if (a === 'close') closeSheet();
       else if (a === 'back') showDay(S.sheetDay);
-      else if (a === 'prev' && S.page > 0) { S.page--; render(); }
-      else if (a === 'next' && S.page < maxPage(new Date())) { S.page++; render(); }
     }
     else if (item) { var inSheet = !!t.closest('#sheet'); if (!inSheet) S.sheetDay = null; showEvent(+item.getAttribute('data-i'), inSheet); }
     else if (day) showDay(day.getAttribute('data-day'));
