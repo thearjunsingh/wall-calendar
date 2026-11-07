@@ -40,55 +40,58 @@ h1{font-size:72px;font-weight:800;line-height:1;letter-spacing:-.02em;margin-top
 .pill:empty{display:none}
 .clock{font-size:96px;font-weight:700;line-height:.9;letter-spacing:-.03em;font-variant-numeric:tabular-nums;white-space:nowrap}
 .clock small{font-size:32px;font-weight:600;color:var(--muted);margin-left:6px;letter-spacing:0}
-main{flex:1;min-height:0;display:grid;grid-template-columns:400px minmax(0,1fr);gap:24px}
+main{flex:1;min-height:0;display:grid;grid-template-columns:360px minmax(0,1fr);gap:20px}
 .left{display:flex;flex-direction:column;gap:20px;min-height:0}
-.card{background:var(--card);border-radius:24px;padding:28px}
+.card{background:var(--card);border-radius:24px;padding:26px}
 .wx{display:flex;flex-direction:column;gap:20px}
 .wxnow{display:flex;align-items:center;gap:20px}
 .wxnow svg{width:76px;height:76px;flex:none}
-.temp{font-size:64px;font-weight:700;line-height:1}
-.sub{font-size:20px;color:var(--muted)}
+.temp{font-size:68px;font-weight:700;line-height:1}
+.sub{font-size:22px;color:var(--muted)}
 .hours{padding-top:16px;border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
 .hours li{display:flex;flex-direction:column;align-items:center;gap:4px}
-.hours span{font-size:16px;color:var(--muted)}
-.hours b{font-size:22px;font-weight:600}
-.hours svg{width:28px;height:28px}
+.hours span{font-size:18px;color:var(--muted)}
+.hours b{font-size:24px;font-weight:600}
+.hours svg{width:30px;height:30px}
 .today{flex:1;min-height:0;display:flex;flex-direction:column;gap:18px;overflow:hidden}
-h2{font-size:24px;font-weight:700}
-#todayList{display:flex;flex-direction:column;gap:16px;min-height:0}
-.tlist{display:flex;flex-direction:column;gap:14px}
+h2{font-size:28px;font-weight:700}
+#todayList{flex:1;display:flex;flex-direction:column;gap:16px;min-height:0;overflow:hidden}
+.tlist{display:flex;flex-direction:column;gap:16px}
 .tlist li{display:flex;gap:16px;align-items:stretch}
 .tlist li.past{opacity:.4}
-.bar{width:6px;border-radius:3px;flex:none}
-.tlist .t{font-size:17px;color:var(--muted)}
-.tlist .n{font-size:24px;font-weight:600;line-height:1.2;overflow-wrap:anywhere}
-.now{display:inline-block;margin-left:8px;padding:2px 8px;border-radius:999px;background:var(--accent);color:#fff;font-size:13px;font-weight:700;letter-spacing:.06em;vertical-align:2px}
-.alldays{display:flex;flex-wrap:wrap;gap:8px}
-.empty{font-size:20px;color:var(--muted)}
-.more{font-size:16px;font-weight:600;color:var(--muted)}
-.week{display:flex;flex-direction:column;gap:16px;min-height:0}
+.bar{width:7px;border-radius:4px;flex:none}
+.tlist .t{font-size:20px;color:var(--muted)}
+.tlist .n{font-size:30px;font-weight:600;line-height:1.15;overflow-wrap:anywhere}
+.now{display:inline-block;margin-left:8px;padding:2px 9px;border-radius:999px;background:var(--accent);color:#fff;font-size:15px;font-weight:700;letter-spacing:.06em;vertical-align:2px}
+.alldays{display:flex;flex-wrap:wrap;gap:10px}
+.empty{font-size:22px;color:var(--muted)}
+.more{font-size:18px;font-weight:600;color:var(--muted)}
+.week{display:flex;flex-direction:column;gap:14px;min-height:0}
 .weekhead{display:flex;justify-content:space-between;align-items:baseline}
-.days{flex:1;min-height:0;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
-.dcol{background:var(--card);border-radius:20px;padding:18px 12px;display:flex;flex-direction:column;gap:12px;overflow:hidden;min-height:0}
-.dhead{display:flex;flex-direction:column;gap:6px}
-.dow{font-size:15px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
-.dnum{font-size:36px;font-weight:700;line-height:1.1}
-.dwx{display:flex;align-items:center;gap:6px;font-size:15px;color:var(--muted);font-weight:600;white-space:nowrap}
-.dwx svg{width:26px;height:26px;flex:none}
+.days{flex:1;min-height:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:16px}
+.dcol{background:var(--card);border-radius:22px;padding:18px;display:flex;flex-direction:column;gap:12px;overflow:hidden;min-height:0}
+.dhead{display:flex;justify-content:space-between;align-items:center;gap:10px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.dlabel{display:flex;align-items:baseline;gap:10px;white-space:nowrap}
+.dow{font-size:22px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.dnum{font-size:40px;font-weight:800;line-height:1}
+.dwx{display:flex;align-items:center;gap:6px;font-size:20px;color:var(--muted);font-weight:600;white-space:nowrap}
+.dwx svg{width:34px;height:34px;flex:none}
 .dwx b{color:var(--ink);font-weight:700}
-.devs{display:flex;flex-direction:column;gap:10px;min-width:0}
-.ev{padding:8px 8px 8px 9px;border-radius:12px;border-left:4px solid}
-.ev .t{font-size:14px;color:#3E4A44}
-.ev .n{font-size:16px;font-weight:600;line-height:1.2;overflow-wrap:break-word;-webkit-hyphens:auto;hyphens:auto}
-.ad{padding:6px 10px;border-radius:10px;font-size:14px;font-weight:600;line-height:1.25;color:#26302B;align-self:flex-start;max-width:100%;overflow-wrap:break-word}
-.dempty{font-size:15px;color:var(--faint)}
+.devs{flex:1;display:flex;flex-direction:column;gap:10px;min-width:0;min-height:0;overflow:hidden}
+.ev{padding:8px 12px;border-radius:12px;border-left:5px solid;flex:none}
+.ev .t{font-size:17px;line-height:1.2;color:#3E4A44}
+.ev .n{font-size:23px;font-weight:600;line-height:1.15;overflow-wrap:break-word}
+.ad{padding:8px 12px;border-radius:10px;font-size:19px;font-weight:600;line-height:1.25;color:#26302B;align-self:flex-start;max-width:100%;overflow-wrap:break-word;flex:none}
+.dempty{font-size:20px;color:var(--faint)}
+.devs.tight .ad span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .status{position:absolute;right:48px;bottom:12px;font-size:13px;color:var(--faint)}
 .status.warn{color:#B5452B;font-weight:600}
 
 /* ---------- portrait ---------- */
 body.portrait #day{padding:48px;gap:24px}
-body.portrait h1{font-size:64px}
-body.portrait .clock{font-size:84px}
+body.portrait h1{font-size:56px}
+body.portrait .clock{font-size:76px}
+body.portrait .clock small{font-size:28px}
 body.portrait main{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:300px minmax(0,1fr);gap:20px}
 body.portrait .left{display:contents}
 body.portrait .card{padding:24px}
@@ -97,18 +100,11 @@ body.portrait .temp{font-size:54px}
 body.portrait .sub{font-size:18px}
 body.portrait .today{gap:12px}
 body.portrait .tlist{gap:10px}
-body.portrait .tlist .n{font-size:20px}
-body.portrait .tlist .t{font-size:15px}
-body.portrait .week{grid-column:1/-1;background:var(--card);border-radius:24px;padding:24px 28px 8px;gap:8px}
-body.portrait .days{grid-template-columns:1fr;grid-auto-rows:minmax(0,1fr);gap:0}
-body.portrait .dcol{flex-direction:row;align-items:center;gap:20px;border-radius:0;background:none;padding:10px 0;border-top:1px solid var(--line)}
-body.portrait .dhead{width:200px;flex:none;flex-direction:row;align-items:center;gap:16px}
-body.portrait .dnum{font-size:32px}
-body.portrait .dwx svg{width:30px;height:30px}
-body.portrait .devs{flex-direction:row;flex-wrap:wrap;gap:10px}
-body.portrait .ev{padding:8px 12px}
-body.portrait .ev .n{font-size:18px;hyphens:none}
-body.portrait .ad{align-self:center;font-size:15px}
+body.portrait .tlist{gap:12px}
+body.portrait .tlist .n{font-size:24px}
+body.portrait .tlist .t{font-size:17px}
+body.portrait .week{grid-column:1/-1}
+body.portrait .pill{font-size:16px;padding:6px 14px;margin-bottom:8px}
 
 /* ---------- night ---------- */
 #night{flex-direction:column;justify-content:center;align-items:center;gap:56px;padding:64px;background:var(--nbg);color:var(--ntext)}
@@ -341,6 +337,18 @@ body.portrait .nclock{font-size:190px}
   // ---------- rendering ----------
   function clockHtml(d) { return hm(d) + '<small>' + ap(d) + '</small>'; }
 
+  // trims items from a box until it fits, adding "+N more"
+  function fit(box, pick) {
+    var hidden = 0, more = null;
+    while (box.scrollHeight > box.clientHeight + 1) {
+      var el = pick(box);
+      if (!el) break;
+      el.parentNode.removeChild(el); hidden++;
+      if (!more) { more = document.createElement('p'); more.className = 'more'; box.appendChild(more); }
+      more.textContent = '+' + hidden + ' more';
+    }
+  }
+
   function isNight(now) {
     if (FORCE === 'night') return true;
     if (FORCE === 'day') return false;
@@ -395,41 +403,44 @@ body.portrait .nclock{font-size:190px}
 
     // today's plan
     var todays = eventsOn(now), allDay = todays.filter(function (e) { return e.allDay; }), timed = todays.filter(function (e) { return !e.allDay; });
-    var portrait = document.body.classList.contains('portrait');
-    var cap = portrait ? 4 : 6, html = '';
+    var html = '';
     if (allDay.length) html += '<div class="alldays">' + allDay.map(function (e) { return '<span class="ad" style="background:' + tint(e.color, .2) + '">' + esc(e.title) + '</span>'; }).join('') + '</div>';
     if (timed.length) {
-      // hide finished events first if the list is too long
-      var upcoming = timed.filter(function (e) { return e.e > now; });
-      var shown = timed.length > cap ? timed.slice(timed.length - Math.max(upcoming.length, cap)).slice(0, cap) : timed;
-      var hiddenCount = timed.length - shown.length;
-      html += '<ul class="tlist">' + shown.map(function (e) {
+      html += '<ul class="tlist">' + timed.map(function (e) {
         var past = e.e <= now && +e.e !== +e.s, current = e.s <= now && e.e > now;
         var t = e.s < sod(now) ? 'until ' + fmtTime(e.e) : fmtRange(e.s, e.e);
         return '<li class="' + (past ? 'past' : '') + '"><span class="bar" style="background:' + esc(e.color) + '"></span><div><p class="t">' + t +
           (current ? '<span class="now">NOW</span>' : '') + '</p><p class="n">' + esc(e.title) + '</p></div></li>';
       }).join('') + '</ul>';
-      if (hiddenCount > 0) html += '<p class="more">+' + hiddenCount + ' more</p>';
     }
     if (!todays.length) html = '<p class="empty">' + (S.eventsAt ? 'Nothing on the calendar today.' : 'Loading the calendar…') + '</p>';
     $('todayList').innerHTML = html;
+    // if it doesn't fit, drop finished events first, then the latest ones
+    fit($('todayList'), function (box) {
+      var ul = box.querySelector('.tlist');
+      return ul && (ul.querySelector('li.past') || (ul.children.length > 1 ? ul.lastElementChild : null));
+    });
 
     // week
-    var daysHtml = '', perDay = portrait ? 4 : 5;
+    var daysHtml = '';
     for (var d = 1; d <= 6; d++) {
       var day = addDays(sod(now), d), evs = eventsOn(day), f = dailyFor(day), wi = f ? wxInfo(f.code, 1) : null;
-      var items = evs.slice(0, perDay).map(function (e) {
-        if (e.allDay) return '<span class="ad" style="background:' + tint(e.color, .2) + '">' + esc(e.title) + '</span>';
+      var items = evs.map(function (e) {
+        if (e.allDay) return '<p class="ad" style="background:' + tint(e.color, .2) + '"><span>' + esc(e.title) + '</span></p>';
         var t = e.s < day ? 'until ' + fmtTime(e.e) : fmtTime(e.s);
         return '<div class="ev" style="background:' + tint(e.color, .14) + ';border-left-color:' + esc(e.color) + '"><p class="t">' + t + '</p><p class="n">' + esc(e.title) + '</p></div>';
       }).join('');
-      if (evs.length > perDay) items += '<p class="more">+' + (evs.length - perDay) + ' more</p>';
       if (!evs.length) items = '<p class="dempty">Nothing planned</p>';
-      daysHtml += '<div class="dcol"><div class="dhead"><div><p class="dow">' + DOW[day.getDay()].slice(0, 3) + '</p><p class="dnum">' + day.getDate() + '</p></div>' +
+      daysHtml += '<div class="dcol"><div class="dhead"><p class="dlabel"><span class="dow">' + DOW[day.getDay()].slice(0, 3) + '</span><span class="dnum">' + day.getDate() + '</span></p>' +
         (f ? '<div class="dwx">' + icon(wi.i, iconColor(wi.i)) + '<span><b>' + f.max + '°</b> ' + f.min + '°</span></div>' : '') +
         '</div><div class="devs">' + items + '</div></div>';
     }
     $('days').innerHTML = daysHtml;
+    [].forEach.call(document.querySelectorAll('#days .devs'), function (box) {
+      // when a day is crowded, shorten long labels to two lines before hiding anything
+      if (box.scrollHeight > box.clientHeight + 1) box.classList.add('tight');
+      fit(box, function (b) { var kids = [].filter.call(b.children, function (c) { return c.className !== 'more'; }); return kids.length > 1 ? kids[kids.length - 1] : null; });
+    });
 
     // status line
     var st = $('status'), msg = '', warn = false;
@@ -529,6 +540,8 @@ body.portrait .nclock{font-size:190px}
   if (cachedW) S.wx = cachedW;
 
   layout();
+  // re-measure once the font has loaded so the fitting is accurate
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(render);
   loadEvents(); loadWeather(); keepAwake();
   setInterval(render, 20e3);
   setInterval(loadEvents, EVENTS_EVERY);
