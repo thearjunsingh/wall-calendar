@@ -67,7 +67,33 @@ h2{font-size:28px;font-weight:700}
 .empty{font-size:22px;color:var(--muted)}
 .more{font-size:18px;font-weight:600;color:var(--muted)}
 .week{display:flex;flex-direction:column;gap:14px;min-height:0}
-.weekhead{display:flex;justify-content:space-between;align-items:baseline}
+.weekhead{display:flex;justify-content:space-between;align-items:center;margin-top:-8px}
+.nav{display:flex;gap:12px}
+.arrow{width:56px;height:56px;border-radius:50%;border:none;background:var(--card);color:var(--ink);display:grid;place-items:center;padding:0;cursor:pointer}
+.arrow svg{width:28px;height:28px}
+.arrow:disabled{opacity:.3}
+.ev,.ad,.tlist li,.dcol{cursor:pointer}
+.ev:active,.ad:active,.tlist li:active{filter:brightness(.93)}
+
+/* ---------- details sheet ---------- */
+#sheet{position:absolute;inset:0;z-index:5;display:none;align-items:center;justify-content:center;background:rgba(16,22,19,.45)}
+#sheet.on{display:flex}
+.sheet{width:760px;max-height:84%;background:var(--card);border-radius:28px;padding:32px 40px 40px;display:flex;flex-direction:column;gap:20px;box-shadow:0 30px 80px rgba(0,0,0,.25)}
+.stop{display:flex;justify-content:space-between;align-items:center;min-height:56px}
+.sbtn{height:56px;min-width:56px;border-radius:999px;border:none;background:var(--bg);color:var(--ink);font:600 22px 'Figtree',system-ui,sans-serif;display:flex;align-items:center;gap:6px;padding:0 16px;cursor:pointer}
+.sbtn svg{width:26px;height:26px}
+.sbar{width:72px;height:8px;border-radius:4px}
+.stitle{font-size:42px;font-weight:700;line-height:1.15;overflow-wrap:anywhere}
+.swhen{font-size:26px;color:var(--muted);font-weight:500}
+.srow{display:flex;gap:14px;align-items:flex-start;font-size:24px;line-height:1.35}
+.srow svg{width:30px;height:30px;flex:none;margin-top:1px}
+.snotes{font-size:23px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere;overflow:auto;min-height:0;padding-top:16px;border-top:1px solid var(--line);-webkit-user-select:text;user-select:text}
+.sempty{font-size:22px;color:var(--faint)}
+.slist{display:flex;flex-direction:column;gap:12px;overflow:auto;min-height:0}
+.slist .ev .n{font-size:28px}
+.slist .ev .t{font-size:20px}
+.slist .ev .l{font-size:19px;color:#3E4A44;margin-top:2px}
+.slist .ad{font-size:24px;padding:10px 16px}
 .days{flex:1;min-height:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:16px}
 .dcol{background:var(--card);border-radius:22px;padding:18px;display:flex;flex-direction:column;gap:12px;overflow:hidden;min-height:0}
 .dhead{display:flex;justify-content:space-between;align-items:center;gap:10px;padding-bottom:10px;border-bottom:1px solid var(--line)}
@@ -151,12 +177,14 @@ body.portrait .nclock{font-size:190px}
         </div>
       </div>
       <section class="week">
-        <div class="weekhead"><h2>This week</h2></div>
+        <div class="weekhead"><h2 id="weekTitle">This week</h2><div class="nav"><button class="arrow" id="prev" data-act="prev" aria-label="Earlier days"></button><button class="arrow" id="next" data-act="next" aria-label="Later days"></button></div></div>
         <div class="days" id="days"></div>
       </section>
     </main>
     <p class="status" id="status"></p>
   </section>
+
+  <div id="sheet" role="dialog" aria-modal="true"><div class="sheet" id="sheetBox"></div></div>
 
   <section id="night" class="screen" aria-label="Night clock">
     <div>
@@ -196,7 +224,8 @@ body.portrait .nclock{font-size:190px}
   var FORCE = P.get('force'); // 'day' | 'night' for testing
   var EVENTS_EVERY = 10 * 60e3, WEATHER_EVERY = 30 * 60e3, WAKE_FOR = 90e3;
 
-  var S = { events: [], eventsAt: null, wx: null, err: false, wakeUntil: 0, bootAt: Date.now() };
+  var S = { events: [], eventsAt: null, through: null, wx: null, err: false, wakeUntil: 0, bootAt: Date.now(), page: 0, sheetDay: null };
+  var IDLE_RESET = 90e3, idleTimer = null;
   var $ = function (id) { return document.getElementById(id); };
 
   // ---------- date helpers ----------
@@ -228,7 +257,7 @@ body.portrait .nclock{font-size:190px}
   // ---------- events ----------
   function normalize(list) {
     return (list || []).map(function (e) {
-      var o = { title: e.title || '(No title)', color: e.color || '#2F6F5E', allDay: !!e.allDay };
+      var o = { title: e.title || '(No title)', color: e.color || '#2F6F5E', allDay: !!e.allDay, loc: e.location || '', notes: e.notes || '' };
       if (o.allDay) { o.s = parseYmd(e.startDate); o.e = parseYmd(e.endDate || e.startDate); if (o.e <= o.s) o.e = addDays(o.s, 1); }
       else { o.s = new Date(e.start); o.e = new Date(e.end || e.start); }
       return o;
@@ -249,7 +278,8 @@ body.portrait .nclock{font-size:190px}
       .then(function (data) {
         if (!data || !Array.isArray(data.events)) throw new Error('bad data');
         S.events = normalize(data.events); S.eventsAt = new Date(); S.err = false;
-        store.set('events', { at: S.eventsAt.toISOString(), events: data.events });
+        S.through = data.through ? parseYmd(data.through) : null;
+        store.set('events', { at: S.eventsAt.toISOString(), through: data.through || null, events: data.events });
         render();
       })
       .catch(function () { S.err = true; render(); });
@@ -404,12 +434,12 @@ body.portrait .nclock{font-size:190px}
     // today's plan
     var todays = eventsOn(now), allDay = todays.filter(function (e) { return e.allDay; }), timed = todays.filter(function (e) { return !e.allDay; });
     var html = '';
-    if (allDay.length) html += '<div class="alldays">' + allDay.map(function (e) { return '<span class="ad" style="background:' + tint(e.color, .2) + '">' + esc(e.title) + '</span>'; }).join('') + '</div>';
+    if (allDay.length) html += '<div class="alldays">' + allDay.map(function (e) { return '<span class="ad" data-i="' + S.events.indexOf(e) + '" style="background:' + tint(e.color, .2) + '">' + esc(e.title) + '</span>'; }).join('') + '</div>';
     if (timed.length) {
       html += '<ul class="tlist">' + timed.map(function (e) {
         var past = e.e <= now && +e.e !== +e.s, current = e.s <= now && e.e > now;
         var t = e.s < sod(now) ? 'until ' + fmtTime(e.e) : fmtRange(e.s, e.e);
-        return '<li class="' + (past ? 'past' : '') + '"><span class="bar" style="background:' + esc(e.color) + '"></span><div><p class="t">' + t +
+        return '<li data-i="' + S.events.indexOf(e) + '" class="' + (past ? 'past' : '') + '"><span class="bar" style="background:' + esc(e.color) + '"></span><div><p class="t">' + t +
           (current ? '<span class="now">NOW</span>' : '') + '</p><p class="n">' + esc(e.title) + '</p></div></li>';
       }).join('') + '</ul>';
     }
@@ -422,16 +452,21 @@ body.portrait .nclock{font-size:190px}
     });
 
     // week
-    var daysHtml = '';
-    for (var d = 1; d <= 6; d++) {
+    var daysHtml = '', first = 1 + S.page * 6;
+    S.page = Math.min(S.page, maxPage(now));
+    first = 1 + S.page * 6;
+    $('weekTitle').textContent = S.page === 0 ? 'This week' : rangeLabel(addDays(sod(now), first), addDays(sod(now), first + 5));
+    $('prev').disabled = S.page === 0;
+    $('next').disabled = S.page >= maxPage(now);
+    for (var d = first; d < first + 6; d++) {
       var day = addDays(sod(now), d), evs = eventsOn(day), f = dailyFor(day), wi = f ? wxInfo(f.code, 1) : null;
       var items = evs.map(function (e) {
-        if (e.allDay) return '<p class="ad" style="background:' + tint(e.color, .2) + '"><span>' + esc(e.title) + '</span></p>';
+        if (e.allDay) return '<p class="ad" data-i="' + S.events.indexOf(e) + '" style="background:' + tint(e.color, .2) + '"><span>' + esc(e.title) + '</span></p>';
         var t = e.s < day ? 'until ' + fmtTime(e.e) : fmtTime(e.s);
-        return '<div class="ev" style="background:' + tint(e.color, .14) + ';border-left-color:' + esc(e.color) + '"><p class="t">' + t + '</p><p class="n">' + esc(e.title) + '</p></div>';
+        return '<div class="ev" data-i="' + S.events.indexOf(e) + '" style="background:' + tint(e.color, .14) + ';border-left-color:' + esc(e.color) + '"><p class="t">' + t + '</p><p class="n">' + esc(e.title) + '</p></div>';
       }).join('');
       if (!evs.length) items = '<p class="dempty">Nothing planned</p>';
-      daysHtml += '<div class="dcol"><div class="dhead"><p class="dlabel"><span class="dow">' + DOW[day.getDay()].slice(0, 3) + '</span><span class="dnum">' + day.getDate() + '</span></p>' +
+      daysHtml += '<div class="dcol" data-day="' + ymd(day) + '"><div class="dhead"><p class="dlabel"><span class="dow">' + DOW[day.getDay()].slice(0, 3) + '</span><span class="dnum">' + day.getDate() + '</span></p>' +
         (f ? '<div class="dwx">' + icon(wi.i, iconColor(wi.i)) + '<span><b>' + f.max + '°</b> ' + f.min + '°</span></div>' : '') +
         '</div><div class="devs">' + items + '</div></div>';
     }
@@ -519,6 +554,61 @@ body.portrait .nclock{font-size:190px}
     return { current: { temperature_2m: hourly.temperature_2m[nh], weather_code: 0, is_day: nh >= 7 && nh < 18 ? 1 : 0 }, hourly: hourly, daily: daily };
   }
 
+  // ---------- paging ----------
+  function maxPage(now) {
+    // how far ahead the relay sent events (older relays: one extra page)
+    if (!S.through) return 1;
+    var last = Math.round((S.through - sod(now)) / 864e5) - 1;
+    return Math.max(0, Math.floor((last - 1) / 6));
+  }
+  function rangeLabel(a, b) {
+    var ma = MON[a.getMonth()].slice(0, 3), mb = MON[b.getMonth()].slice(0, 3);
+    return ma + ' ' + a.getDate() + ' – ' + (ma === mb ? '' : mb + ' ') + b.getDate();
+  }
+  var CHEV_L = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>';
+  var CHEV_R = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>';
+  var X_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+  var PIN = '<svg viewBox="0 0 24 24" fill="none" stroke="#5A6660" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.5"/></svg>';
+  $('prev').innerHTML = CHEV_L; $('next').innerHTML = CHEV_R;
+
+  // ---------- details sheet ----------
+  function longDate(d) { return DOW[d.getDay()] + ', ' + MON[d.getMonth()].slice(0, 3) + ' ' + d.getDate(); }
+  function whenText(e) {
+    if (e.allDay) {
+      var last = addDays(e.e, -1);
+      return (sameDay(e.s, last) ? longDate(e.s) : longDate(e.s) + ' – ' + longDate(last)) + ' · All day';
+    }
+    if (!sameDay(e.s, e.e) && e.e - e.s > 0) return longDate(e.s) + ', ' + fmtTime(e.s) + ' – ' + longDate(e.e) + ', ' + fmtTime(e.e);
+    return longDate(e.s) + ' · ' + fmtRange(e.s, e.e);
+  }
+  function closeBtn() { return '<button class="sbtn" data-act="close" aria-label="Close">' + X_ICON + '</button>'; }
+  function openSheet(html) { $('sheetBox').innerHTML = html; $('sheet').classList.add('on'); }
+  function closeSheet() { $('sheet').classList.remove('on'); S.sheetDay = null; }
+  function showEvent(i, fromSheet) {
+    // inside the day sheet, look up events as they were when it opened
+    var e = (fromSheet && S.snap ? S.snap : S.events)[i]; if (!e) return;
+    var top = '<div class="stop">' + (S.sheetDay ? '<button class="sbtn" data-act="back">' + CHEV_L + 'All of ' + DOW[parseYmd(S.sheetDay).getDay()] + '</button>' : '<span></span>') + closeBtn() + '</div>';
+    openSheet(top + '<div class="sbar" style="background:' + esc(e.color) + '"></div>' +
+      '<p class="stitle">' + esc(e.title) + '</p><p class="swhen">' + whenText(e) + '</p>' +
+      (e.loc ? '<p class="srow">' + PIN + '<span>' + esc(e.loc) + '</span></p>' : '') +
+      (e.notes ? '<div class="snotes">' + esc(e.notes) + '</div>' : (e.loc ? '' : '<p class="sempty">No other details.</p>')));
+  }
+  function showDay(key) {
+    S.sheetDay = key; S.snap = S.events;
+    var day = parseYmd(key), evs = eventsOn(day), f = dailyFor(day), wi = f ? wxInfo(f.code, 1) : null;
+    var list = evs.map(function (e) {
+      var i = S.snap.indexOf(e);
+      if (e.allDay) return '<p class="ad" data-i="' + i + '" style="background:' + tint(e.color, .2) + '">' + esc(e.title) + '</p>';
+      var t = e.s < day ? 'until ' + fmtTime(e.e) : fmtRange(e.s, e.e);
+      return '<div class="ev" data-i="' + i + '" style="background:' + tint(e.color, .14) + ';border-left-color:' + esc(e.color) + '"><p class="t">' + t + '</p><p class="n">' + esc(e.title) + '</p>' +
+        (e.loc ? '<p class="l">' + esc(e.loc) + '</p>' : '') + '</div>';
+    }).join('');
+    openSheet('<div class="stop"><div class="dwx">' + (f ? icon(wi.i, iconColor(wi.i)) + '<span><b>' + f.max + '°</b> ' + f.min + '°</span>' : '') + '</div>' + closeBtn() + '</div>' +
+      '<p class="stitle">' + longDate(day) + '</p>' +
+      '<div class="slist">' + (list || '<p class="sempty">Nothing planned.</p>') + '</div>');
+  }
+  function onIdle() { closeSheet(); if (S.page !== 0) { S.page = 0; render(); } }
+
   // ---------- keep it alive ----------
   var wakeLock = null;
   function keepAwake() {
@@ -526,9 +616,22 @@ body.portrait .nclock{font-size:190px}
     navigator.wakeLock.request('screen').then(function (l) { wakeLock = l; }).catch(function () {});
   }
 
-  document.addEventListener('click', function () {
-    if (document.body.classList.contains('is-night') && FORCE !== 'night') { S.wakeUntil = Date.now() + WAKE_FOR; render(); }
-    else loadEvents();
+  $('stage').addEventListener('click', function (ev) {
+    if (document.body.classList.contains('is-night') && FORCE !== 'night') { S.wakeUntil = Date.now() + WAKE_FOR; render(); return; }
+    // after a minute and a half of no taps, close details and go back to this week
+    clearTimeout(idleTimer); idleTimer = setTimeout(onIdle, IDLE_RESET);
+    var t = ev.target, act = t.closest('[data-act]'), item = t.closest('[data-i]'), day = t.closest('[data-day]');
+    if (act) {
+      var a = act.getAttribute('data-act');
+      if (a === 'close') closeSheet();
+      else if (a === 'back') showDay(S.sheetDay);
+      else if (a === 'prev' && S.page > 0) { S.page--; render(); }
+      else if (a === 'next' && S.page < maxPage(new Date())) { S.page++; render(); }
+    }
+    else if (item) { var inSheet = !!t.closest('#sheet'); if (!inSheet) S.sheetDay = null; showEvent(+item.getAttribute('data-i'), inSheet); }
+    else if (day) showDay(day.getAttribute('data-day'));
+    else if (t === $('sheet')) closeSheet();
+    else if (!t.closest('#sheet')) loadEvents();
   });
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') { keepAwake(); loadEvents(); loadWeather(); } });
   window.addEventListener('resize', layout);
@@ -536,7 +639,7 @@ body.portrait .nclock{font-size:190px}
 
   // start from cached data so the screen is never blank
   var cachedE = !DEMO && store.get('events'), cachedW = !DEMO && store.get('wx');
-  if (cachedE) { S.events = normalize(cachedE.events); S.eventsAt = new Date(cachedE.at); }
+  if (cachedE) { S.events = normalize(cachedE.events); S.eventsAt = new Date(cachedE.at); S.through = cachedE.through ? parseYmd(cachedE.through) : null; }
   if (cachedW) S.wx = cachedW;
 
   layout();
