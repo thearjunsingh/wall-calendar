@@ -804,7 +804,11 @@ body.portrait .marquee{font-size:24px}
     ['Luigi’s Mansion 3', 'switch', 'Luigi hunts ghosts floor by floor through a haunted hotel. Co-op with Gooigi.'],
     ['Kirby and the Forgotten Land', 'switch', 'Kirby’s first full 3D adventure, through an abandoned city. Two-player co-op.'],
     ['Mario Kart 8 Deluxe', 'switch', 'Kart racing and battle mode for up to four on one Switch.'],
-    ['LEGO Party!', 'switch', 'LEGO party game with minigames for up to four players.']
+    ['LEGO Party!', 'switch', 'LEGO party game with minigames for up to four players.'],
+    ['Super Mario Bros. Wonder', 'switch', 'Side-scrolling Mario where Wonder Flowers twist each level. Up to four players.'],
+    ['Overcooked! 2', 'switch', 'Chaotic co-op cooking in kitchens that move and fall apart. Up to four players.'],
+    ['Moving Out 2', 'switch', 'Silly co-op moving-company game: carry, throw and smash furniture out of houses.'],
+    ['Minecraft', 'switch', 'Build, explore and survive in a world made of blocks. Split-screen with friends.']
   ].map(function (r) { return { kind: 'game', title: r[0], svc: r[1], blurb: r[2], genres: [] }; });
   function mvNoteText() {
     if (S.hallKind === 'games') return S.games ? 'From your Games tab' + (S.games.some(function (g) { return g.poster; }) ? ' · Box art from SteamGridDB' : '') : 'Your games, without box art for now';
@@ -859,7 +863,7 @@ body.portrait .marquee{font-size:24px}
     MV.recent.push(m.title); if (MV.recent.length > 30) MV.recent.shift();
     return m;
   }
-  function svcChip(m) { var s = SVC[m.svc] || { name: m.svc || '', c: '#444' }; if (!s.name) return ''; return '<span class="svc" style="background:' + s.c + '">' + esc(s.name) + '</span>'; }
+  function svcChip(m) { if (m.kind === 'game') return ''; var s = SVC[m.svc] || { name: m.svc || '', c: '#444' }; if (!s.name) return ''; return '<span class="svc" style="background:' + s.c + '">' + esc(s.name) + '</span>'; }
   function posterArt(m) {
     var h = 0; for (var i = 0; i < m.title.length; i++) h = (h * 31 + m.title.charCodeAt(i)) >>> 0;
     var pal = POSTER_COLORS[h % POSTER_COLORS.length], c1 = m.c1 || pal[0], c2 = m.c2 || pal[1];
