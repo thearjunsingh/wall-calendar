@@ -48,6 +48,7 @@ main{flex:1;min-height:0;display:grid;grid-template-columns:360px minmax(0,1fr);
 .wxnow svg{width:76px;height:76px;flex:none}
 .temp{font-size:68px;font-weight:700;line-height:1}
 .sub{font-size:22px;color:var(--muted)}
+.wxage{font-size:16px;font-weight:600;color:#B5452B}
 .hours{padding-top:16px;border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
 .hours li{display:flex;flex-direction:column;align-items:center;gap:4px}
 .hours span{font-size:18px;color:var(--muted)}
@@ -282,8 +283,8 @@ body.portrait .marquee{font-size:24px}
   var DEMO = P.has('demo');
   if (P.get('src')) store.set('src', P.get('src'));
   var SRC = DEMO ? null : (P.get('src') || store.get('src'));
-  var LAT = parseFloat(P.get('lat')) || 38.7521;     // Roseville, CA
-  var LON = parseFloat(P.get('lon')) || -121.2880;
+  var LAT = parseFloat(P.get('lat')) || 38.7501;     // Granite Bay, CA 95746
+  var LON = parseFloat(P.get('lon')) || -121.1671;
   var nightParts = (P.get('night') || '22-6').split('-').map(Number);
   var NIGHT_START = nightParts[0], NIGHT_END = nightParts[1]; // 24h clock; same number = never
   var FORCE = P.get('force'); // 'day' | 'night' for testing
@@ -359,10 +360,15 @@ body.portrait .marquee{font-size:24px}
       '&hourly=temperature_2m,weather_code,is_day' +
       '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max' +
       '&temperature_unit=fahrenheit&timezone=auto&forecast_days=8';
-    fetch(url).then(function (r) { return r.json(); }).then(function (d) {
+    clearTimeout(S.wxRetry);
+    fetch(url, { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }).then(function (d) {
       if (!d || !d.current) throw new Error('bad weather');
-      S.wx = d; store.set('wx', d); render();
-    }).catch(function () {});
+      S.wx = d; S.wxAt = new Date(); S.wxErr = false;
+      store.set('wx', { at: S.wxAt.toISOString(), lat: LAT, lon: LON, d: d }); render();
+    }).catch(function () {
+      // try again in two minutes instead of waiting half an hour
+      S.wxErr = true; render(); S.wxRetry = setTimeout(loadWeather, 2 * 60e3);
+    });
   }
 
   function wxInfo(code, isDay) {
@@ -492,12 +498,14 @@ body.portrait .marquee{font-size:24px}
           hrs += '<li><span>' + shortHour(+h.time[j].slice(11, 13)) + '</span>' + icon(hi.i, iconColor(hi.i)) + '<b>' + Math.round(h.temperature_2m[j]) + '°</b></li>';
         }
       }
+      var stale = S.wxAt && now - S.wxAt > 2 * 3600e3;
       wxHtml = '<div class="wxnow">' + icon(cur.i, iconColor(cur.i)) +
         '<div><p class="temp">' + Math.round(w.current.temperature_2m) + '°</p><p class="sub">' + esc(cur.l) +
         (today ? ' · H ' + today.max + '° L ' + today.min + '°' : '') + '</p></div></div>' +
-        (hrs ? '<ul class="hours">' + hrs + '</ul>' : '');
+        (hrs ? '<ul class="hours">' + hrs + '</ul>' : '') +
+        (stale ? '<p class="wxage">Weather as of ' + fmtTime(S.wxAt) + (sameDay(S.wxAt, now) ? '' : ' ' + (S.wxAt.getMonth() + 1) + '/' + S.wxAt.getDate()) + '</p>' : '');
     } else {
-      wxHtml = '<p class="empty">Weather loading…</p>';
+      wxHtml = '<p class="empty">' + (S.wxErr ? 'Couldn’t reach the weather. Retrying…' : 'Weather loading…') + '</p>';
     }
     $('wx').innerHTML = wxHtml;
 
@@ -963,7 +971,8 @@ body.portrait .marquee{font-size:24px}
   // start from cached data so the screen is never blank
   var cachedE = !DEMO && store.get('events'), cachedW = !DEMO && store.get('wx');
   if (cachedE) { S.events = normalize(cachedE.events); S.eventsAt = new Date(cachedE.at); S.through = cachedE.through ? parseYmd(cachedE.through) : null; }
-  if (cachedW) S.wx = cachedW;
+  // only reuse saved weather if it was for this location
+  if (cachedW && cachedW.d && Math.abs(cachedW.lat - LAT) < 0.02 && Math.abs(cachedW.lon - LON) < 0.02) { S.wx = cachedW.d; S.wxAt = new Date(cachedW.at); }
 
   layout();
   // re-measure once the font has loaded so the fitting is accurate
