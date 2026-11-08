@@ -783,7 +783,7 @@ body.portrait .marquee{font-size:24px}
     return 'From your family watchlist' + (S.movies.some(function (m) { return m.poster; }) ? ' · Posters and streaming info from TMDB and JustWatch' : '');
   }
   var MOVIE_IDLE = (parseFloat(P.get('movieidle')) || 15) * 60e3, MOVIES_AUTO = P.get('movies') !== 'off';
-  var MV = { built: '', items: [], raf: 0, last: 0, paused: false, deck: [], src: [], fallback: false };
+  var MV = { built: '', items: [], raf: 0, last: 0, paused: false, deck: [], recent: [], src: [], fallback: false };
   var MV_P = 1000, MV_GAP = 650, MV_N = 8, MV_NEAR = 260, MV_SPAN = MV_GAP * MV_N, MV_FAR = MV_NEAR - MV_SPAN, MV_SPEED = 60;
   S.moviesOn = false; S.lastTouch = Date.now(); S.movies = null;
 
@@ -807,14 +807,34 @@ body.portrait .marquee{font-size:24px}
     MV.fallback = !pool.length;
     return pool.length ? pool : all;
   }
-  function nextMovie() {
-    if (!MV.deck.length) {
-      var picks = mvPicks(), d = [];
-      moviePool().forEach(function (m) { d.push(m); if (picks.indexOf(m.title) > -1) d.push(m); });   // picks show up twice as often
-      for (var i = d.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = d[i]; d[i] = d[j]; d[j] = t; }
-      MV.deck = d;
+  // Choose the movie for a frame so repeats land as far apart as possible.
+  function nextMovie(slot) {
+    var pool = moviePool(), picks = mvPicks(), z = slot ? slot.z : 0, gap = {}, m;
+    // how far is this frame from the nearest copy of each movie already on the wall?
+    MV.items.forEach(function (o) {
+      if (o === slot || !o.m) return;
+      var d = Math.abs(o.z - z), k = o.m.title;
+      gap[k] = gap[k] === undefined ? d : Math.min(gap[k], d);
+    });
+    var fresh = pool.filter(function (x) { return gap[x.title] === undefined; });
+    if (fresh.length) {
+      // not on the wall yet: skip the last few shown, and give picks two chances
+      var recent = MV.recent.slice(-Math.min(4, fresh.length - 1));
+      var choices = fresh.filter(function (x) { return recent.indexOf(x.title) < 0; });
+      if (!choices.length) choices = fresh;
+      var bag = [];
+      choices.forEach(function (x) { bag.push(x); if (picks.indexOf(x.title) > -1) bag.push(x); });
+      m = bag[Math.floor(Math.random() * bag.length)];
+    } else {
+      // everything is already up: repeat the one whose copy is farthest away (picks get a small edge)
+      var best = -1;
+      pool.forEach(function (x) {
+        var score = gap[x.title] + (picks.indexOf(x.title) > -1 ? 300 : 0) + Math.random() * 40;
+        if (score > best) { best = score; m = x; }
+      });
     }
-    return MV.deck.pop();
+    MV.recent.push(m.title); if (MV.recent.length > 30) MV.recent.shift();
+    return m;
   }
   function svcChip(m) { var s = SVC[m.svc] || { name: m.svc || '', c: '#444' }; if (!s.name) return ''; return '<span class="svc" style="background:' + s.c + '">' + esc(s.name) + '</span>'; }
   function posterArt(m) {
@@ -879,8 +899,8 @@ body.portrait .marquee{font-size:24px}
       add('dt', -(wallX - 40), floorY, z, ' rotateX(90deg)');
       add('dt', wallX - 40, floorY, z, ' rotateX(90deg)');
       var pz = pNear - MV_SPAN + k * MV_GAP;
-      fillPoster(add('mv', -posterX, posterY, pz, ' rotateY(62deg)', pNear), nextMovie());
-      fillPoster(add('mv', posterX, posterY, pz + MV_GAP / 2, ' rotateY(-62deg)', pNear), nextMovie());
+      var left = add('mv', -posterX, posterY, pz, ' rotateY(62deg)', pNear); fillPoster(left, nextMovie(left));
+      var right = add('mv', posterX, posterY, pz + MV_GAP / 2, ' rotateY(-62deg)', pNear); fillPoster(right, nextMovie(right));
     }
     place(0);
   }
@@ -888,7 +908,7 @@ body.portrait .marquee{font-size:24px}
     for (var i = 0; i < MV.items.length; i++) {
       var it = MV.items[i];
       it.z += dz;
-      if (it.z > it.near) { it.z -= MV_SPAN; if (it.m) fillPoster(it, nextMovie()); }
+      if (it.z > it.near) { it.z -= MV_SPAN; if (it.m) { it.m = null; fillPoster(it, nextMovie(it)); } }
       it.el.style.transform = 'translate3d(' + it.x + 'px,' + it.y + 'px,' + it.z.toFixed(1) + 'px)' + it.tf;
     }
   }
@@ -901,7 +921,13 @@ body.portrait .marquee{font-size:24px}
   }
   function runHall() { if (!MV.raf && S.moviesOn && !MV.paused) { MV.last = 0; MV.raf = requestAnimationFrame(frame); } }
   function haltHall() { if (MV.raf) cancelAnimationFrame(MV.raf); MV.raf = 0; }
-  function refillPosters() { MV.deck = []; MV.items.forEach(function (it) { if (it.m) fillPoster(it, nextMovie()); }); }
+  function refillPosters() {
+    var posters = MV.items.filter(function (it) { return it.m; });
+    posters.forEach(function (it) { it.m = null; });
+    MV.recent = [];
+    // fill nearest first, so what's on screen gets the best spread
+    posters.sort(function (a, b) { return b.z - a.z; }).forEach(function (it) { fillPoster(it, nextMovie(it)); });
+  }
   function startMovies() {
     if (S.moviesOn || isNight(new Date())) return;
     closeSheet(); S.moviesOn = true; MV.paused = false;
