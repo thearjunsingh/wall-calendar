@@ -853,8 +853,13 @@ body.portrait .marquee{font-size:24px}
     if (m.status === 'now') return short ? 'NOW AVAILABLE' : 'Now available' + (SVC[m.svc] ? ' on ' + SVC[m.svc].name : '');
     if (m.status !== 'soon') return '';
     var d = m.availableFrom ? parseYmd(m.availableFrom) : null, when = d ? MON[d.getMonth()].slice(0, 3) + ' ' + d.getDate() : '';
+    var on = SVC[m.svc] ? SVC[m.svc].name : '';
+    if (m.type === 'show' && d) {
+      if (short) return (m.newSeason ? 'NEW SEASON ' : 'PREMIERES ') + when.toUpperCase();
+      return (m.newSeason ? 'New season' : 'Premieres') + (on ? ' on ' + on : '') + ' ' + when;
+    }
     if (short) return d ? 'COMING ' + when.toUpperCase() : 'COMING SOON';
-    return 'Coming ' + (SVC[m.svc] ? 'to ' + SVC[m.svc].name + ' ' : '') + (d ? 'on ' + when : 'soon');
+    return 'Coming ' + (on ? 'to ' + on + ' ' : '') + (d ? 'on ' + when : 'soon');
   }
   function fillPoster(it, m) {
     it.m = m;
@@ -945,7 +950,7 @@ body.portrait .marquee{font-size:24px}
       '<div class="mdet"><div class="mini">' + posterArt(m) + '</div><div class="minfo">' +
       '<p class="stitle">' + esc(m.title) + '</p>' +
       (m.addedBy ? '<p class="mtags">Added by ' + esc(m.addedBy) + '</p>' : '') +
-      '<p class="swhen">' + [m.year, m.rating, m.mins ? Math.floor(m.mins / 60) + 'h ' + (m.mins % 60) + 'm' : ''].filter(Boolean).join(' · ') + '</p>' +
+      '<p class="swhen">' + [m.year, m.rating, m.type === 'show' ? 'Series' : '', m.mins ? Math.floor(m.mins / 60) + 'h ' + (m.mins % 60) + 'm' : ''].filter(Boolean).join(' · ') + '</p>' +
       '<p>' + svcChip(m) + '</p>' +
       (availLine(m) ? '<p class="mtags" style="color:' + (m.status === 'soon' ? '#BFD7FF' : '#E9C46A') + '">' + esc(availLine(m)) + '</p>' : '') +
       (m.blurb ? '<p class="mblurb">' + esc(m.blurb) + '</p>' : '') +
