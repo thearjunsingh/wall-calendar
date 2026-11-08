@@ -159,12 +159,17 @@ body.is-movies{background:#0C0907}
 #fog{pointer-events:none;background:radial-gradient(ellipse 34% 30% at 50% 50%,rgba(6,4,3,.97) 0%,rgba(6,4,3,.8) 38%,rgba(6,4,3,0) 100%)}
 .mv{position:absolute;left:50%;top:50%;width:300px;height:450px;margin:-225px 0 0 -150px;will-change:transform;-webkit-backface-visibility:hidden;backface-visibility:hidden;cursor:pointer}
 .mv .fr{position:absolute;inset:-12px;border-radius:8px;background:#2A2018;border:2px solid #5A4632;box-shadow:0 0 70px rgba(255,210,140,.32)}
+.mv.tagged .fr{bottom:-66px}
+.mv .tag{position:absolute;left:0;right:0;bottom:-58px;height:46px;border-radius:4px;display:flex;align-items:center;justify-content:center;background:#100A06;border:1px solid rgba(233,196,106,.55);color:#FCE7B2;font-size:20px;font-weight:800;letter-spacing:.22em;white-space:nowrap;text-shadow:0 0 12px rgba(255,200,90,.9)}
+.mv .tag.soon{border-color:rgba(150,190,255,.5);color:#D6E6FF;text-shadow:0 0 12px rgba(120,170,255,.9)}
 .mv.pick .fr{background:#B88A32;border-color:#F4D98E;box-shadow:0 0 90px rgba(255,196,80,.55)}
 .mv.pick::after{content:'★';position:absolute;top:-34px;left:50%;margin-left:-22px;width:44px;height:44px;border-radius:50%;background:#E9C46A;color:#3A2A08;font-size:26px;line-height:44px;text-align:center}
 .lt{position:absolute;left:50%;top:50%;width:260px;height:110px;margin:-55px 0 0 -130px;border-radius:8px;background:rgba(255,232,190,.9);box-shadow:0 0 60px rgba(255,220,160,.7);will-change:transform}
 .dt{position:absolute;left:50%;top:50%;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;background:#FFB46B;box-shadow:0 0 22px 6px rgba(255,150,60,.6);will-change:transform}
 .art{position:absolute;inset:0;overflow:hidden;border-radius:2px;display:flex;flex-direction:column;justify-content:space-between;padding:18px;color:#fff}
-.art img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.art .pimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.art .pchip{position:absolute;left:14px;bottom:14px}
+.art .pchip .svc{box-shadow:0 2px 10px rgba(0,0,0,.4)}
 .art .orb{position:absolute;width:380px;height:380px;border-radius:50%;background:rgba(255,255,255,.14)}
 .art .orb2{position:absolute;width:200px;height:200px;border-radius:50%;border:16px solid rgba(255,255,255,.16)}
 .svc{position:relative;align-self:flex-start;padding:5px 11px;border-radius:999px;font-size:14px;font-weight:800;letter-spacing:.04em;color:#fff}
@@ -773,7 +778,10 @@ body.portrait .marquee{font-size:24px}
   var POSTER_COLORS = [['#0E7C86', '#F2A541'], ['#7A2E8E', '#F4C95D'], ['#F28C28', '#6A4C93'], ['#2E86AB', '#F6AE2D'], ['#C1121F', '#FDC500'],
     ['#1B4965', '#E63946'], ['#2A9D8F', '#E9C46A'], ['#9D0208', '#F48C06'], ['#023E8A', '#FFB703'], ['#5A189A', '#F9C74F'],
     ['#31572C', '#90A955'], ['#EF476F', '#FFD166'], ['#22223B', '#C9ADA7'], ['#6D597A', '#E56B6F'], ['#1E6FD9', '#F94144']];
-  function mvNoteText() { return S.movies ? 'From your family watchlist' : 'Sample titles for now'; }
+  function mvNoteText() {
+    if (!S.movies) return 'Sample titles for now';
+    return 'From your family watchlist' + (S.movies.some(function (m) { return m.poster; }) ? ' · Posters and streaming info from TMDB and JustWatch' : '');
+  }
   var MOVIE_IDLE = (parseFloat(P.get('movieidle')) || 15) * 60e3, MOVIES_AUTO = P.get('movies') !== 'off';
   var MV = { built: '', items: [], raf: 0, last: 0, paused: false, deck: [], src: [], fallback: false };
   var MV_P = 1000, MV_GAP = 650, MV_N = 8, MV_NEAR = 260, MV_SPAN = MV_GAP * MV_N, MV_FAR = MV_NEAR - MV_SPAN, MV_SPEED = 60;
@@ -782,7 +790,7 @@ body.portrait .marquee{font-size:24px}
   function mvPrefs() {
     var p = store.get('mvprefs') || {};
     if (!p.svc) { p.svc = {}; Object.keys(SVC).forEach(function (k) { p.svc[k] = true; }); }
-    p.genres = p.genres || []; p.picksOnly = !!p.picksOnly;
+    p.genres = p.genres || []; p.picksOnly = !!p.picksOnly; p.nowOnly = !!p.nowOnly;
     return p;
   }
   function mvPicks() { return store.get('mvpicks') || []; }
@@ -792,6 +800,7 @@ body.portrait .marquee{font-size:24px}
     var p = mvPrefs(), picks = mvPicks(), all = movieList();
     var pool = all.filter(function (m) {
       if (p.picksOnly) return picks.indexOf(m.title) > -1;
+      if (p.nowOnly && m.status === 'soon') return false;
       if (SVC[m.svc] && !p.svc[m.svc]) return false;
       return !p.genres.length || !(m.genres && m.genres.length) || m.genres.some(function (g) { return p.genres.indexOf(g) > -1; });
     });
@@ -809,19 +818,30 @@ body.portrait .marquee{font-size:24px}
   }
   function svcChip(m) { var s = SVC[m.svc] || { name: m.svc || '', c: '#444' }; if (!s.name) return ''; return '<span class="svc" style="background:' + s.c + '">' + esc(s.name) + '</span>'; }
   function posterArt(m) {
-    if (m.poster) return '<div class="art"><img src="' + esc(m.poster) + '" alt="">' + svcChip(m) + '</div>';
     var h = 0; for (var i = 0; i < m.title.length; i++) h = (h * 31 + m.title.charCodeAt(i)) >>> 0;
     var pal = POSTER_COLORS[h % POSTER_COLORS.length], c1 = m.c1 || pal[0], c2 = m.c2 || pal[1];
     return '<div class="art" style="background:linear-gradient(165deg,' + c1 + ',' + c2 + ')">' +
       '<i class="orb" style="left:' + (-120 + h % 160) + 'px;top:' + (40 + (h >> 4) % 120) + 'px"></i>' +
       '<i class="orb2" style="right:' + (-40 + (h >> 8) % 60) + 'px;top:' + (10 + (h >> 12) % 90) + 'px"></i>' +
-      (svcChip(m) || '<span></span>') + '<div><p class="ttl">' + esc(m.title) + '</p><p class="yr">' + esc([m.year, m.rating].filter(Boolean).join(' · ')) + '</p></div></div>';
+      (svcChip(m) || '<span></span>') + '<div><p class="ttl">' + esc(m.title) + '</p><p class="yr">' + esc([m.year, m.rating].filter(Boolean).join(' · ')) + '</p></div>' +
+      // the real poster sits on top; if it can't load, the color art underneath shows instead
+      (m.poster ? '<img class="pimg" src="' + esc(m.poster) + '" alt="" onerror="this.remove()">' + (svcChip(m) ? '<div class="pchip">' + svcChip(m) + '</div>' : '') : '') +
+      '</div>';
+  }
+  // like a theater poster case: a lit strip under the frame
+  function availLine(m, short) {
+    if (m.status === 'now') return short ? 'NOW AVAILABLE' : 'Now available' + (SVC[m.svc] ? ' on ' + SVC[m.svc].name : '');
+    if (m.status !== 'soon') return '';
+    var d = m.availableFrom ? parseYmd(m.availableFrom) : null, when = d ? MON[d.getMonth()].slice(0, 3) + ' ' + d.getDate() : '';
+    if (short) return d ? 'COMING ' + when.toUpperCase() : 'COMING SOON';
+    return 'Coming ' + (SVC[m.svc] ? 'to ' + SVC[m.svc].name + ' ' : '') + (d ? 'on ' + when : 'soon');
   }
   function fillPoster(it, m) {
     it.m = m;
-    it.el.className = 'mv' + (isPick(m) ? ' pick' : '');
+    var tag = availLine(m, true);
+    it.el.className = 'mv' + (isPick(m) ? ' pick' : '') + (tag ? ' tagged' : '');
     it.el.setAttribute('data-mv', movieList().indexOf(m));
-    it.el.innerHTML = '<div class="fr"></div>' + posterArt(m);
+    it.el.innerHTML = '<div class="fr"></div>' + posterArt(m) + (tag ? '<p class="tag' + (m.status === 'soon' ? ' soon' : '') + '">' + tag + '</p>' : '');
   }
 
   // the hallway: a static drawing of walls, floor and ceiling, with posters and lights moving through it
@@ -831,7 +851,7 @@ body.portrait .marquee{font-size:24px}
     if (MV.built === key) return;
     MV.built = key; MV.deck = [];
     var wallX = Math.min(640, W / 2 - 30), floorY = Math.round(H * 0.42), ceilY = -Math.round(H * 0.46);
-    var posterX = wallX - 100, posterY = portrait ? -70 : -40;
+    var posterX = wallX - 100, posterY = portrait ? -95 : -65;
     var sf = MV_P / (MV_P - MV_FAR), cx = W / 2, cy = H / 2;
     function pt(x, y) { return Math.round(cx + x) + ',' + Math.round(cy + y); }
     var tF = (H / 2) / floorY, tC = (H / 2) / -ceilY;
@@ -901,6 +921,7 @@ body.portrait .marquee{font-size:24px}
       (m.addedBy ? '<p class="mtags">Added by ' + esc(m.addedBy) + '</p>' : '') +
       '<p class="swhen">' + [m.year, m.rating, m.mins ? Math.floor(m.mins / 60) + 'h ' + (m.mins % 60) + 'm' : ''].filter(Boolean).join(' · ') + '</p>' +
       '<p>' + svcChip(m) + '</p>' +
+      (availLine(m) ? '<p class="mtags" style="color:' + (m.status === 'soon' ? '#BFD7FF' : '#E9C46A') + '">' + esc(availLine(m)) + '</p>' : '') +
       (m.blurb ? '<p class="mblurb">' + esc(m.blurb) + '</p>' : '') +
       '<p class="mtags">' + esc((m.genres || []).join(' · ')) + '</p>' +
       '<div class="chips"><button class="chip gold' + (pick ? ' on' : '') + '" data-act="mv-pin" data-mvi="' + i + '">★ ' + (pick ? 'Our pick' : 'Make it our pick') + '</button></div>' +
@@ -913,6 +934,7 @@ body.portrait .marquee{font-size:24px}
     var gens = GENRES.map(function (g) { return '<button class="chip' + (p.genres.indexOf(g) > -1 ? ' on' : '') + '" data-act="mv-genre" data-k="' + g + '">' + g + '</button>'; }).join('');
     openSheet('<div class="stop"><p class="stitle" style="font-size:34px">What to show</p>' + closeBtn() + '</div><div class="sscroll">' +
       '<p class="slabel">Services</p><div class="chips">' + svcs + '</div>' +
+      '<p class="slabel">Availability</p><div class="chips"><button class="chip' + (p.nowOnly ? ' on' : '') + '" data-act="mv-now">Streaming now only</button></div>' +
       '<p class="slabel">Genres</p><div class="chips">' + gens + '</div><p class="snote">Pick none to show every genre.</p>' +
       '<p class="slabel">Our picks</p><div class="chips"><button class="chip gold' + (p.picksOnly ? ' on' : '') + '" data-act="mv-picks">★ Only show our picks (' + n + ')</button></div>' +
       '<p class="snote">Tap a poster and choose “Make it our pick” to give it a gold frame. Picks show up twice as often.</p>' +
@@ -923,6 +945,7 @@ body.portrait .marquee{font-size:24px}
     var p = mvPrefs(), k = el.getAttribute('data-k');
     if (a === 'mv-svc') { p.svc[k] = !p.svc[k]; store.set('mvprefs', p); refillPosters(); showPrefs(); }
     else if (a === 'mv-genre') { var gi = p.genres.indexOf(k); if (gi > -1) p.genres.splice(gi, 1); else p.genres.push(k); store.set('mvprefs', p); refillPosters(); showPrefs(); }
+    else if (a === 'mv-now') { p.nowOnly = !p.nowOnly; store.set('mvprefs', p); refillPosters(); showPrefs(); }
     else if (a === 'mv-picks') { p.picksOnly = !p.picksOnly; store.set('mvprefs', p); refillPosters(); showPrefs(); }
     else if (a === 'mv-pin') {
       var i = +el.getAttribute('data-mvi'), m = movieList()[i], picks = mvPicks(), at = picks.indexOf(m.title);
