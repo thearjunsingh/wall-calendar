@@ -345,7 +345,8 @@ body.portrait .marquee{font-size:24px}
         if (!data || !Array.isArray(data.events)) throw new Error('bad data');
         S.events = normalize(data.events); S.eventsAt = new Date(); S.err = false;
         S.through = data.through ? parseYmd(data.through) : null;
-        S.movies = Array.isArray(data.movies) && data.movies.length ? data.movies : null;
+        var mv = Array.isArray(data.movies) && data.movies.length ? data.movies : null;
+        if (JSON.stringify(mv) !== JSON.stringify(S.movies)) { S.movies = mv; MV.deck = []; if (MV.items.length) refillPosters(); $('mvNote').textContent = mvNoteText(); }
         store.set('events', { at: S.eventsAt.toISOString(), through: data.through || null, events: data.events });
         render();
       })
@@ -738,7 +739,7 @@ body.portrait .marquee{font-size:24px}
   // ---------- movie hallway ----------
   var SVC = {
     netflix: { name: 'Netflix', c: '#E50914' }, disney: { name: 'Disney+', c: '#113CCF' },
-    hbo: { name: 'HBO Max', c: '#5B2BC9' }, hulu: { name: 'Hulu', c: '#14A85A' }, showtime: { name: 'Showtime', c: '#B5121B' }
+    hbo: { name: 'HBO Max', c: '#5B2BC9' }, hulu: { name: 'Hulu', c: '#14A85A' }, showtime: { name: 'Paramount+', c: '#0064FF' }
   };
   var GENRES = ['Animation', 'Family', 'Comedy', 'Adventure', 'Action', 'Fantasy', 'Sci-Fi', 'Mystery'];
   // sample titles until the relay sends real ones (all rated G to PG-13)
@@ -749,30 +750,30 @@ body.portrait .marquee{font-size:24px}
     ['Zootopia', 2016, 'PG', 108, 'disney', 'Animation,Comedy,Mystery', 'A rookie bunny cop and a smooth-talking fox team up to crack a missing-animal case.', '#2E86AB', '#F6AE2D'],
     ['Coco', 2017, 'PG', 105, 'disney', 'Animation,Family,Fantasy', 'A boy who dreams of music stumbles into the Land of the Dead on Día de los Muertos.', '#C1121F', '#FDC500'],
     ['The Incredibles', 2004, 'PG', 115, 'disney', 'Animation,Action,Family', 'A family of undercover superheroes suits up again when a villain targets their dad.', '#D62828', '#1D3557'],
-    ['Guardians of the Galaxy', 2014, 'PG-13', 121, 'disney', 'Action,Sci-Fi,Comedy', 'A ragtag crew of space misfits ends up protecting the galaxy from a powerful zealot.', '#3A0CA3', '#F72585'],
     ['Elemental', 2023, 'PG', 101, 'disney', 'Animation,Family,Comedy', 'In a city of fire, water, land and air residents, two opposites become unlikely friends.', '#FF6B35', '#00A6FB'],
     ['The Mitchells vs. the Machines', 2021, 'PG', 114, 'netflix', 'Animation,Comedy,Sci-Fi', 'A family road trip turns into a fight for humanity when the robots take over.', '#FF5DA2', '#4CC9F0'],
     ['Klaus', 2019, 'PG', 96, 'netflix', 'Animation,Family,Comedy', 'A lazy postman sent to a frozen island town teams up with a reclusive toymaker.', '#1B4965', '#E63946'],
     ['Leo', 2023, 'PG', 102, 'netflix', 'Animation,Comedy,Family', 'A 74-year-old class lizard decides to help the fifth graders before the year ends.', '#2A9D8F', '#E9C46A'],
     ['Nimona', 2023, 'PG', 101, 'netflix', 'Animation,Action,Fantasy', 'A shapeshifting teen helps a framed knight prove his innocence in a high-tech medieval city.', '#9D0208', '#F48C06'],
     ['The Sea Beast', 2022, 'PG', 115, 'netflix', 'Animation,Adventure,Fantasy', 'A stowaway girl and a famous monster hunter learn the sea monsters aren’t what they seem.', '#023E8A', '#FFB703'],
-    ['Enola Holmes', 2020, 'PG-13', 123, 'netflix', 'Mystery,Adventure', 'Sherlock’s quick-witted younger sister heads to London to find their missing mother.', '#6B705C', '#CB997E'],
     ['The Lego Movie', 2014, 'PG', 100, 'hbo', 'Animation,Comedy,Adventure', 'An ordinary construction worker is mistaken for the hero destined to save the Lego world.', '#E8A600', '#E63946'],
-    ['Dune', 2021, 'PG-13', 155, 'hbo', 'Sci-Fi,Adventure', 'A young heir is pulled into a war over the most valuable desert planet in the universe.', '#9C6644', '#3B2A1E'],
     ['Harry Potter and the Sorcerer’s Stone', 2001, 'PG', 152, 'hbo', 'Fantasy,Family,Adventure', 'An orphan learns he’s a wizard and starts his first year at Hogwarts.', '#3C1518', '#D4A373'],
     ['Wonka', 2023, 'PG', 116, 'hbo', 'Family,Comedy,Fantasy', 'A young Willy Wonka arrives in a new city with big chocolate dreams.', '#5A189A', '#F9C74F'],
     ['The Iron Giant', 1999, 'PG', 86, 'hbo', 'Animation,Family,Sci-Fi', 'A boy befriends a giant robot from outer space and hides him from a suspicious agent.', '#31572C', '#90A955'],
-    ['Free Guy', 2021, 'PG-13', 115, 'hulu', 'Comedy,Action,Sci-Fi', 'A background character in a video game realizes he can be the hero.', '#0077B6', '#FFB703'],
     ['Ron’s Gone Wrong', 2021, 'PG', 107, 'hulu', 'Animation,Comedy,Family', 'A lonely kid’s glitchy robot buddy turns out to be the friend he needed.', '#EF476F', '#FFD166'],
     ['Night at the Museum', 2006, 'PG', 108, 'hulu', 'Comedy,Family,Adventure', 'A new night guard discovers the museum’s exhibits come to life after dark.', '#22223B', '#C9ADA7'],
     ['Ice Age', 2002, 'PG', 81, 'hulu', 'Animation,Comedy,Adventure', 'A mammoth, a sloth and a saber-toothed tiger try to return a human baby to his tribe.', '#48CAE4', '#03045E'],
     ['The Princess Bride', 1987, 'PG', 98, 'hulu', 'Adventure,Comedy,Fantasy', 'A farm boy turned pirate battles giants and swordsmen to rescue his true love.', '#6D597A', '#E56B6F'],
     ['Sonic the Hedgehog 2', 2022, 'PG', 122, 'showtime', 'Action,Comedy,Family', 'Sonic and his new pal Tails race Dr. Robotnik to a powerful emerald.', '#1E6FD9', '#F94144'],
-    ['Top Gun: Maverick', 2022, 'PG-13', 131, 'showtime', 'Action,Adventure', 'A veteran Navy pilot trains young aviators for a near-impossible mission.', '#E85D04', '#370617'],
     ['Transformers One', 2024, 'PG', 104, 'showtime', 'Animation,Action,Sci-Fi', 'Before they were rivals, Optimus Prime and Megatron were friends working in the mines.', '#D00000', '#3F37C9'],
     ['The SpongeBob Movie: Sponge on the Run', 2020, 'PG', 91, 'showtime', 'Animation,Comedy,Adventure', 'SpongeBob and Patrick set off for the Lost City of Atlantic City to rescue Gary.', '#F5C400', '#0096C7']
   ].map(function (r) { return { title: r[0], year: r[1], rating: r[2], mins: r[3], svc: r[4], genres: r[5].split(','), blurb: r[6], c1: r[7], c2: r[8] }; });
 
+  // poster colors for movies from the watchlist, picked by title so each one keeps its look
+  var POSTER_COLORS = [['#0E7C86', '#F2A541'], ['#7A2E8E', '#F4C95D'], ['#F28C28', '#6A4C93'], ['#2E86AB', '#F6AE2D'], ['#C1121F', '#FDC500'],
+    ['#1B4965', '#E63946'], ['#2A9D8F', '#E9C46A'], ['#9D0208', '#F48C06'], ['#023E8A', '#FFB703'], ['#5A189A', '#F9C74F'],
+    ['#31572C', '#90A955'], ['#EF476F', '#FFD166'], ['#22223B', '#C9ADA7'], ['#6D597A', '#E56B6F'], ['#1E6FD9', '#F94144']];
+  function mvNoteText() { return S.movies ? 'From your family watchlist' : 'Sample titles for now'; }
   var MOVIE_IDLE = (parseFloat(P.get('movieidle')) || 15) * 60e3, MOVIES_AUTO = P.get('movies') !== 'off';
   var MV = { built: '', items: [], raf: 0, last: 0, paused: false, deck: [], src: [], fallback: false };
   var MV_P = 1000, MV_GAP = 650, MV_N = 8, MV_NEAR = 260, MV_SPAN = MV_GAP * MV_N, MV_FAR = MV_NEAR - MV_SPAN, MV_SPEED = 60;
@@ -792,7 +793,7 @@ body.portrait .marquee{font-size:24px}
     var pool = all.filter(function (m) {
       if (p.picksOnly) return picks.indexOf(m.title) > -1;
       if (SVC[m.svc] && !p.svc[m.svc]) return false;
-      return !p.genres.length || m.genres.some(function (g) { return p.genres.indexOf(g) > -1; });
+      return !p.genres.length || !(m.genres && m.genres.length) || m.genres.some(function (g) { return p.genres.indexOf(g) > -1; });
     });
     MV.fallback = !pool.length;
     return pool.length ? pool : all;
@@ -806,14 +807,15 @@ body.portrait .marquee{font-size:24px}
     }
     return MV.deck.pop();
   }
-  function svcChip(m) { var s = SVC[m.svc] || { name: m.svc || '', c: '#444' }; return '<span class="svc" style="background:' + s.c + '">' + esc(s.name) + '</span>'; }
+  function svcChip(m) { var s = SVC[m.svc] || { name: m.svc || '', c: '#444' }; if (!s.name) return ''; return '<span class="svc" style="background:' + s.c + '">' + esc(s.name) + '</span>'; }
   function posterArt(m) {
     if (m.poster) return '<div class="art"><img src="' + esc(m.poster) + '" alt="">' + svcChip(m) + '</div>';
     var h = 0; for (var i = 0; i < m.title.length; i++) h = (h * 31 + m.title.charCodeAt(i)) >>> 0;
-    return '<div class="art" style="background:linear-gradient(165deg,' + m.c1 + ',' + m.c2 + ')">' +
+    var pal = POSTER_COLORS[h % POSTER_COLORS.length], c1 = m.c1 || pal[0], c2 = m.c2 || pal[1];
+    return '<div class="art" style="background:linear-gradient(165deg,' + c1 + ',' + c2 + ')">' +
       '<i class="orb" style="left:' + (-120 + h % 160) + 'px;top:' + (40 + (h >> 4) % 120) + 'px"></i>' +
       '<i class="orb2" style="right:' + (-40 + (h >> 8) % 60) + 'px;top:' + (10 + (h >> 12) % 90) + 'px"></i>' +
-      svcChip(m) + '<div><p class="ttl">' + esc(m.title) + '</p><p class="yr">' + m.year + ' · ' + esc(m.rating) + '</p></div></div>';
+      (svcChip(m) || '<span></span>') + '<div><p class="ttl">' + esc(m.title) + '</p><p class="yr">' + esc([m.year, m.rating].filter(Boolean).join(' · ')) + '</p></div></div>';
   }
   function fillPoster(it, m) {
     it.m = m;
@@ -884,7 +886,7 @@ body.portrait .marquee{font-size:24px}
     if (S.moviesOn || isNight(new Date())) return;
     closeSheet(); S.moviesOn = true; MV.paused = false;
     render(); buildHall();
-    $('mvNote').textContent = S.movies ? '' : 'Sample titles for now';
+    $('mvNote').textContent = mvNoteText();
     runHall();
   }
   function stopMovies() { S.moviesOn = false; haltHall(); closeSheet(); S.lastTouch = Date.now(); render(); }
@@ -896,6 +898,7 @@ body.portrait .marquee{font-size:24px}
     openSheet('<div class="stop"><span></span>' + closeBtn() + '</div>' +
       '<div class="mdet"><div class="mini">' + posterArt(m) + '</div><div class="minfo">' +
       '<p class="stitle">' + esc(m.title) + '</p>' +
+      (m.addedBy ? '<p class="mtags">Added by ' + esc(m.addedBy) + '</p>' : '') +
       '<p class="swhen">' + [m.year, m.rating, m.mins ? Math.floor(m.mins / 60) + 'h ' + (m.mins % 60) + 'm' : ''].filter(Boolean).join(' · ') + '</p>' +
       '<p>' + svcChip(m) + '</p>' +
       (m.blurb ? '<p class="mblurb">' + esc(m.blurb) + '</p>' : '') +
