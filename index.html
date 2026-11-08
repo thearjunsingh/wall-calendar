@@ -283,8 +283,8 @@ body.portrait .marquee{font-size:24px}
   var DEMO = P.has('demo');
   if (P.get('src')) store.set('src', P.get('src'));
   var SRC = DEMO ? null : (P.get('src') || store.get('src'));
-  var LAT = parseFloat(P.get('lat')) || 38.7501;     // Granite Bay, CA 95746
-  var LON = parseFloat(P.get('lon')) || -121.1671;
+  var LAT = parseFloat(P.get('lat')) || 38.7796;     // Roseville, CA 95747
+  var LON = parseFloat(P.get('lon')) || -121.3680;
   var nightParts = (P.get('night') || '22-6').split('-').map(Number);
   var NIGHT_START = nightParts[0], NIGHT_END = nightParts[1]; // 24h clock; same number = never
   var FORCE = P.get('force'); // 'day' | 'night' for testing
