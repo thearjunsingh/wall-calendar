@@ -33,7 +33,12 @@ body.portrait #stage{width:1024px;height:1366px}
 /* ---------- day ---------- */
 #day{flex-direction:column;gap:28px;padding:44px 48px}
 header{display:flex;justify-content:space-between;align-items:flex-end;gap:24px}
-.kicker{font-size:22px;font-weight:600;color:var(--accent);letter-spacing:.08em;text-transform:uppercase}
+.kicker{font-size:22px;font-weight:600;color:var(--accent);letter-spacing:.08em;text-transform:uppercase;display:inline-block;padding:14px 40px 10px 0;margin:-14px 0 -10px}
+.kicker .privtag{margin-left:14px;padding:3px 12px;border-radius:999px;background:#F4E1EA;color:#8E3B63;font-size:16px;letter-spacing:.06em;vertical-align:2px}
+.pinrow{display:flex;gap:14px;align-items:center}
+.pinin{width:260px;height:64px;border-radius:16px;border:2px solid var(--line);padding:0 20px;font:600 32px 'Figtree',system-ui,sans-serif;letter-spacing:.3em;color:var(--ink);background:var(--bg);-webkit-user-select:text;user-select:text}
+.pinbtn{height:64px;padding:0 26px;border-radius:16px;border:none;background:var(--accent);color:#fff;font:700 22px 'Figtree',system-ui,sans-serif;cursor:pointer}
+.pinerr{font-size:20px;color:#B5452B;font-weight:600}
 h1{font-size:72px;font-weight:800;line-height:1;letter-spacing:-.02em;margin-top:4px;white-space:nowrap}
 .hright{display:flex;align-items:flex-end;gap:24px}
 .pill{margin-bottom:12px;padding:8px 16px;border-radius:999px;background:#FBE7D6;color:#8A3D12;font-size:18px;font-weight:600;white-space:nowrap}
@@ -230,7 +235,7 @@ body.portrait .marquee{font-size:24px}
   <section id="day" class="screen" aria-label="Family calendar">
     <header>
       <div>
-        <p class="kicker">Today</p>
+        <p class="kicker" id="kicker">Today</p>
         <h1 id="dTitle"></h1>
       </div>
       <div class="hright">
@@ -312,6 +317,9 @@ body.portrait .marquee{font-size:24px}
 
   var S = { events: [], eventsAt: null, through: null, wx: null, err: false, wakeUntil: 0, bootAt: Date.now(), page: 0, sheetDay: null };
   var IDLE_RESET = 90e3, idleTimer = null;
+  // hidden Arjun & Erin calendar: double-tap "Today"; turns itself off after 5 quiet minutes
+  var PRIV_FOR = 5 * 60e3;
+  S.privOn = false; S.privPending = false; S.kickerTapAt = 0;
   var $ = function (id) { return document.getElementById(id); };
 
   // ---------- date helpers ----------
@@ -343,7 +351,7 @@ body.portrait .marquee{font-size:24px}
   // ---------- events ----------
   function normalize(list) {
     return (list || []).map(function (e) {
-      var o = { title: e.title || '(No title)', color: e.color || '#2F6F5E', allDay: !!e.allDay, loc: e.location || '', notes: e.notes || '' };
+      var o = { title: e.title || '(No title)', color: e.color || '#2F6F5E', allDay: !!e.allDay, loc: e.location || '', notes: e.notes || '', priv: !!e.priv };
       if (o.allDay) { o.s = parseYmd(e.startDate); o.e = parseYmd(e.endDate || e.startDate); if (o.e <= o.s) o.e = addDays(o.s, 1); }
       else { o.s = new Date(e.start); o.e = new Date(e.end || e.start); }
       return o;
@@ -352,6 +360,7 @@ body.portrait .marquee{font-size:24px}
   function eventsOn(day) {
     var a = sod(day), b = addDays(a, 1);
     return S.events.filter(function (e) {
+      if (e.priv && !S.privOn) return false;
       return e.allDay ? (e.s < b && e.e > a) : (e.s < b && (e.e > a || (+e.e === +e.s && e.s >= a)));
     }).sort(function (x, y) { return (y.allDay - x.allDay) || (x.s - y.s) || x.title.localeCompare(y.title); });
   }
@@ -359,18 +368,20 @@ body.portrait .marquee{font-size:24px}
   function loadEvents() {
     if (DEMO) { S.events = normalize(demoEvents()); S.eventsAt = new Date(); render(); return; }
     if (!SRC) return;
-    var url = SRC + (SRC.indexOf('?') > -1 ? '&' : '?') + '_=' + Date.now();
+    var pk = S.privOn ? store.get('pk') : null;
+    var url = SRC + (SRC.indexOf('?') > -1 ? '&' : '?') + '_=' + Date.now() + (pk ? '&pk=' + encodeURIComponent(pk) : '');
     fetch(url, { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
       .then(function (data) {
         if (!data || !Array.isArray(data.events)) throw new Error('bad data');
         S.events = normalize(data.events); S.eventsAt = new Date(); S.err = false;
+        if (pk) privResult(data.privateOk === true);
         S.through = data.through ? parseYmd(data.through) : null;
         var mv = Array.isArray(data.movies) && data.movies.length ? data.movies : null;
         var gm = Array.isArray(data.games) && data.games.length ? data.games : null;
         var changed = (S.hallKind === 'games' ? JSON.stringify(gm) !== JSON.stringify(S.games) : JSON.stringify(mv) !== JSON.stringify(S.movies));
         S.movies = mv; S.games = gm;
         if (changed) { MV.deck = []; if (MV.items.length) refillPosters(); $('mvNote').textContent = mvNoteText(); }
-        store.set('events', { at: S.eventsAt.toISOString(), through: data.through || null, events: data.events });
+        store.set('events', { at: S.eventsAt.toISOString(), through: data.through || null, events: data.events.filter(function (e) { return !e.priv; }) });
         render();
       })
       .catch(function () { S.err = true; render(); });
@@ -490,6 +501,7 @@ body.portrait .marquee{font-size:24px}
     $('setup').classList.toggle('on', setupNeeded);
     if (setupNeeded) { $('day').classList.remove('on'); $('night').classList.remove('on'); return; }
     var night = isNight(now);
+    if (night && S.privOn) privOff();
     if (night && S.moviesOn) { S.moviesOn = false; haltHall(); closeSheet(); }   // night clock wins
     var movies = !night && S.moviesOn;
     document.body.classList.toggle('is-night', night);
@@ -501,6 +513,7 @@ body.portrait .marquee{font-size:24px}
   }
 
   function renderDay(now) {
+    $('kicker').innerHTML = 'Today' + (S.privOn ? '<span class="privtag">Arjun &amp; Erin</span>' : '');
     $('dTitle').textContent = DOW[now.getDay()] + ', ' + MON[now.getMonth()].slice(0, 3) + ' ' + now.getDate();
     $('dClock').innerHTML = clockHtml(now);
     $('countdown').textContent = countdown(now);
@@ -714,6 +727,42 @@ body.portrait .marquee{font-size:24px}
       '<div class="slist">' + (list || '<p class="sempty">Nothing planned.</p>') + '</div>');
   }
   function onIdle() { closeSheet(); if (S.page !== 0) { S.page = 0; render(); } }
+
+  // ---------- hidden Arjun & Erin calendar ----------
+  function privOn() {
+    if (!store.get('pk')) { showPinSheet(''); return; }
+    S.privOn = true; S.privPending = false; render(); loadEvents();
+  }
+  function privOff() {
+    if (!S.privOn) return;
+    S.privOn = false; S.privPending = false;
+    S.events = S.events.filter(function (e) { return !e.priv; });
+    if (S.snap) S.snap = S.snap.filter(function (e) { return !e.priv; });
+    if ($('sheet').classList.contains('on') && !S.moviesOn) closeSheet();
+    render();
+  }
+  function privResult(ok) {
+    if (ok) { if (S.privPending) { S.privPending = false; closeSheet(); } return; }
+    var wasEntering = S.privPending;
+    store.set('pk', null); privOff();
+    if (wasEntering) showPinSheet('That PIN didn’t work.');
+  }
+  function showPinSheet(err) {
+    openSheet('<div class="stop"><p class="stitle" style="font-size:34px">Our calendar</p>' + closeBtn() + '</div>' +
+      '<p class="swhen">Enter the PIN once on this iPad. After that, double-tap “Today” to show or hide it.</p>' +
+      '<form class="pinrow" id="pinForm"><input class="pinin" id="pinIn" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="12">' +
+      '<button class="pinbtn" type="submit">Show</button></form>' +
+      (err ? '<p class="pinerr">' + esc(err) + '</p>' : ''));
+    setTimeout(function () { var i = $('pinIn'); if (i) i.focus(); }, 50);
+  }
+  document.addEventListener('submit', function (ev) {
+    if (ev.target.id !== 'pinForm') return;
+    ev.preventDefault();
+    var v = ($('pinIn').value || '').trim();
+    if (!v) return;
+    $('pinIn').blur();
+    store.set('pk', v); S.privOn = true; S.privPending = true; loadEvents();
+  });
 
   // ---------- swipe the week ----------
   S.swipedAt = 0;
@@ -967,6 +1016,7 @@ body.portrait .marquee{font-size:24px}
     posters.sort(function (a, b) { return b.z - a.z; }).forEach(function (it) { fillPoster(it, nextMovie(it)); });
   }
   function startMovies(kind) {
+    privOff();
     kind = kind === 'games' ? 'games' : 'movies';
     if (S.moviesOn || isNight(new Date())) return;
     closeSheet(); S.moviesOn = true; MV.paused = false;
@@ -1042,6 +1092,13 @@ body.portrait .marquee{font-size:24px}
     // after a minute and a half of no taps, close details and go back to this week
     clearTimeout(idleTimer); idleTimer = setTimeout(onIdle, IDLE_RESET);
     var t = ev.target, act = t.closest('[data-act]'), item = t.closest('[data-i]'), day = t.closest('[data-day]'), poster = t.closest('[data-mv]');
+    if (t.closest('#pinForm')) return;
+    if (t.closest('#kicker')) {
+      var nowT = Date.now();
+      if (nowT - S.kickerTapAt < 450) { S.kickerTapAt = 0; if (S.privOn) privOff(); else privOn(); }
+      else S.kickerTapAt = nowT;
+      return;
+    }
     if (act) {
       var a = act.getAttribute('data-act');
       if (a.indexOf('mv') === 0 || a === 'movies' || a === 'games') mvAction(a, act);
@@ -1076,6 +1133,7 @@ body.portrait .marquee{font-size:24px}
   loadEvents(); loadWeather(); keepAwake();
   setInterval(function () {
     // after 15 quiet minutes in the day, drift into the movie hallway
+    if (S.privOn && !S.privPending && Date.now() - S.lastTouch > PRIV_FOR) privOff();
     if (MOVIES_AUTO && !S.moviesOn && !$('sheet').classList.contains('on') && Date.now() - S.lastTouch > MOVIE_IDLE) { S.autoKind = S.autoKind === 'movies' ? 'games' : 'movies'; startMovies(S.autoKind); }
     render();
   }, 20e3);
