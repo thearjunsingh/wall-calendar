@@ -835,17 +835,22 @@ body.portrait .marquee{font-size:24px}
       '<polygon fill="url(#gc)" points="' + [pt(-wallX * tC, -H / 2), pt(wallX * tC, -H / 2), pt(wallX * sf, ceilY * sf), pt(-wallX * sf, ceilY * sf)].join(' ') + '"/>' +
       '<rect x="' + Math.round(cx - wallX * sf) + '" y="' + Math.round(cy + ceilY * sf) + '" width="' + Math.round(2 * wallX * sf) + '" height="' + Math.round((floorY - ceilY) * sf) + '" fill="#050403"/>';
     var hall = $('hall'); hall.innerHTML = ''; MV.items = [];
-    function add(cls, x, y, z, tf) {
+    // a poster only goes back to the far end once its inner edge (frame included) has left the screen
+    var rad = 62 * Math.PI / 180, halfFrame = 150 + 12;
+    var innerX = posterX - halfFrame * Math.cos(rad), innerDz = halfFrame * Math.sin(rad);
+    var pNear = Math.round(MV_P + innerDz - MV_P * innerX / (W / 2)) + 60;
+    function add(cls, x, y, z, tf, near) {
       var el = document.createElement('div'); el.className = cls; hall.appendChild(el);
-      var it = { el: el, x: x, y: y, z: z, tf: tf }; MV.items.push(it); return it;
+      var it = { el: el, x: x, y: y, z: z, tf: tf, near: near || MV_NEAR }; MV.items.push(it); return it;
     }
     for (var k = 0; k < MV_N; k++) {
       var z = MV_FAR + k * MV_GAP;
       add('lt', 0, ceilY, z + MV_GAP / 4, ' rotateX(90deg)');
       add('dt', -(wallX - 40), floorY, z, ' rotateX(90deg)');
       add('dt', wallX - 40, floorY, z, ' rotateX(90deg)');
-      fillPoster(add('mv', -posterX, posterY, z, ' rotateY(62deg)'), nextMovie());
-      fillPoster(add('mv', posterX, posterY, z + MV_GAP / 2, ' rotateY(-62deg)'), nextMovie());
+      var pz = pNear - MV_SPAN + k * MV_GAP;
+      fillPoster(add('mv', -posterX, posterY, pz, ' rotateY(62deg)', pNear), nextMovie());
+      fillPoster(add('mv', posterX, posterY, pz + MV_GAP / 2, ' rotateY(-62deg)', pNear), nextMovie());
     }
     place(0);
   }
@@ -853,7 +858,7 @@ body.portrait .marquee{font-size:24px}
     for (var i = 0; i < MV.items.length; i++) {
       var it = MV.items[i];
       it.z += dz;
-      if (it.z > MV_NEAR) { it.z -= MV_SPAN; if (it.m) fillPoster(it, nextMovie()); }
+      if (it.z > it.near) { it.z -= MV_SPAN; if (it.m) fillPoster(it, nextMovie()); }
       it.el.style.transform = 'translate3d(' + it.x + 'px,' + it.y + 'px,' + it.z.toFixed(1) + 'px)' + it.tf;
     }
   }
