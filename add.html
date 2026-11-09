@@ -245,9 +245,8 @@ input{font:inherit;color:inherit;-webkit-user-select:text;user-select:text}
   if (P.get('src')) store.set('src', P.get('src'));
   if (P.get('code')) store.set('kidcode', P.get('code'));
   var FROM_WALL = P.get('from') === 'wall';
-  if (P.has('src') || P.has('code')) {
-    try { history.replaceState(null, '', location.pathname + (FROM_WALL ? '?from=wall' : '')); } catch (e) {}
-  }
+  // The setup link stays in the address bar on purpose: an iPhone/iPad home-screen icon keeps its own
+  // separate storage and starts from whatever address was showing when it was added.
   var SRC = store.get('src');
   var $ = function (id) { return document.getElementById(id); };
 
