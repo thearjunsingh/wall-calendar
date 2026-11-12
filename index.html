@@ -210,6 +210,10 @@ body.is-movies{background:#0C0907}
 .chip{height:50px;padding:0 20px;border-radius:999px;border:2px solid rgba(255,255,255,.2);background:none;color:#F3EBDD;font:600 20px 'Figtree',system-ui,sans-serif;display:inline-flex;align-items:center;gap:8px;cursor:pointer}
 .chip.on{background:#F3EBDD;color:#18130E;border-color:#F3EBDD}
 .chip.gold.on{background:#E9C46A;border-color:#E9C46A;color:#2A1E06}
+.chip.seen.sure{background:#2F8F6A;border-color:#2F8F6A;color:#fff}
+.chip[disabled]{opacity:.55}
+#sheet.dark .pinin{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.2);color:#F3EBDD}
+.seenmsg{display:flex;flex-direction:column;align-items:flex-start;gap:16px;padding:6px 0 4px}
 .sscroll{display:flex;flex-direction:column;gap:16px;overflow:auto;min-height:0}
 .slabel{font-size:17px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#B8AA95;margin-top:6px}
 .snote{font-size:18px;color:#9C8F7D;line-height:1.4}
@@ -1045,9 +1049,81 @@ body.portrait .marquee{font-size:24px}
       (availLine(m) ? '<p class="mtags" style="color:' + (m.kind === 'game' ? '#99F6E4' : m.status === 'soon' ? '#BFD7FF' : '#E9C46A') + '">' + esc(availLine(m)) + '</p>' : '') +
       (m.blurb ? '<p class="mblurb">' + esc(m.blurb) + '</p>' : '') +
       '<p class="mtags">' + esc((m.genres || []).join(' · ')) + '</p>' +
-      '<div class="chips"><button class="chip gold' + (pick ? ' on' : '') + '" data-act="mv-pin" data-mvi="' + i + '">★ ' + (m.kind === 'game' ? (pick ? 'Play this soon' : 'Let’s play this soon') : (pick ? 'Our pick' : 'Make it our pick')) + '</button></div>' +
+      '<div class="chips"><button class="chip gold' + (pick ? ' on' : '') + '" data-act="mv-pin" data-mvi="' + i + '">★ ' + (m.kind === 'game' ? (pick ? 'Play this soon' : 'Let’s play this soon') : (pick ? 'Our pick' : 'Make it our pick')) + '</button>' +
+      (canMarkSeen(m) ? '<button class="chip seen" id="seenBtn" data-act="mv-seen" data-mvi="' + i + '">✓ We watched it</button>' : '') + '</div>' +
       '</div></div>', true);
   }
+
+  // ---------- "We watched it": ticks Watched on the sheet so it leaves the hallway ----------
+  function canMarkSeen(m) { return m.kind !== 'game' && !!S.movies && S.movies.indexOf(m) > -1 && (!!SRC || DEMO); }
+  function relayPost(body) {
+    body.code = store.get('kidcode') || '';
+    if (DEMO) return Promise.resolve({ ok: true });
+    return fetch(SRC, { method: 'POST', body: JSON.stringify(body) }).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); });
+  }
+  function seenTap(i, el) {
+    var m = movieList()[i]; if (!m) return;
+    if (!el.classList.contains('sure')) {
+      // first tap asks; a second tap within a few seconds makes it happen
+      el.classList.add('sure'); el.textContent = 'Tap again to take it off the hallway';
+      clearTimeout(S.seenTimer);
+      S.seenTimer = setTimeout(function () { if (el.isConnected) { el.classList.remove('sure'); el.textContent = '✓ We watched it'; } }, 5000);
+      return;
+    }
+    clearTimeout(S.seenTimer);
+    if (!store.get('kidcode') && !DEMO) { S.seenWaiting = m; return showCodeSheet(''); }
+    markSeen(m, el);
+  }
+  function markSeen(m, el) {
+    if (el) { el.disabled = true; el.textContent = 'Saving…'; }
+    relayPost({ action: 'watched', title: m.title, year: m.year || '' }).then(function (res) {
+      if (res && res.ok) return seenDone(m);
+      if (res && res.error === 'code') { store.set('kidcode', null); S.seenWaiting = m; return showCodeSheet('That code didn’t work.'); }
+      seenFailed(res && res.error === 'missing' ? 'Couldn’t find “' + m.title + '” on the watchlist sheet.' : 'Couldn’t save that. Try again in a minute.');
+    }).catch(function () { seenFailed('Couldn’t reach the watchlist. Check the Wi-Fi and try again.'); });
+  }
+  function dropMovie(m, add) {
+    if (!S.movies) return;
+    if (add) { if (S.movies.indexOf(m) < 0) S.movies.push(m); }
+    else S.movies = S.movies.filter(function (x) { return x !== m; });
+    MV.deck = []; refillPosters();
+  }
+  function seenDone(m) {
+    dropMovie(m, false); S.seenLast = m;
+    openSheet('<div class="stop"><p class="stitle" style="font-size:34px">Marked as watched</p>' + closeBtn() + '</div>' +
+      '<div class="seenmsg"><p class="swhen">“' + esc(m.title) + '” is off the hallway and checked off on the watchlist.</p>' +
+      '<div class="chips"><button class="chip" data-act="mv-unseen">Undo</button></div></div>', true);
+    clearTimeout(S.seenTimer);
+    S.seenTimer = setTimeout(function () { if (S.seenLast === m && $('sheet').classList.contains('on')) closeSheet(); }, 8000);
+  }
+  function unSeen() {
+    var m = S.seenLast; if (!m) return closeSheet();
+    clearTimeout(S.seenTimer); S.seenLast = null;
+    relayPost({ action: 'watched', title: m.title, year: m.year || '', value: false }).then(function (res) {
+      if (!res || !res.ok) return seenFailed('Couldn’t undo that. Untick it on the watchlist sheet.');
+      dropMovie(m, true); closeSheet();
+    }).catch(function () { seenFailed('Couldn’t reach the watchlist. Untick it on the sheet instead.'); });
+  }
+  function seenFailed(text) {
+    openSheet('<div class="stop"><p class="stitle" style="font-size:34px">Hmm</p>' + closeBtn() + '</div><p class="swhen">' + esc(text) + '</p>', true);
+  }
+  function showCodeSheet(err) {
+    openSheet('<div class="stop"><p class="stitle" style="font-size:34px">Family code</p>' + closeBtn() + '</div>' +
+      '<p class="swhen">Enter the family code once on this iPad (the same one the Add page uses).</p>' +
+      '<form class="pinrow" id="codeForm"><input class="pinin" id="codeIn" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="12">' +
+      '<button class="pinbtn" type="submit">Save</button></form>' +
+      (err ? '<p class="pinerr">' + esc(err) + '</p>' : ''), true);
+    setTimeout(function () { var c = $('codeIn'); if (c) c.focus(); }, 50);
+  }
+  document.addEventListener('submit', function (ev) {
+    if (ev.target.id !== 'codeForm') return;
+    ev.preventDefault();
+    var v = ($('codeIn').value || '').replace(/\D/g, '');
+    if (!v) return;
+    $('codeIn').blur(); store.set('kidcode', v);
+    var m = S.seenWaiting; S.seenWaiting = null;
+    if (m) { openSheet('<p class="swhen">Saving…</p>', true); markSeen(m, null); } else closeSheet();
+  });
   function showPrefs() {
     MV.paused = true; haltHall();
     var p = mvPrefs(), n = mvPicks().length;
@@ -1075,6 +1151,8 @@ body.portrait .marquee{font-size:24px}
       MV.items.forEach(function (it) { if (it.m === m) it.el.classList.toggle('pick', at < 0); });
       showMovie(i);
     }
+    else if (a === 'mv-seen') seenTap(+el.getAttribute('data-mvi'), el);
+    else if (a === 'mv-unseen') unSeen();
     else if (a === 'mv-prefs') showPrefs();
     else if (a === 'mv-exit') stopMovies();
     else if (a === 'movies' || a === 'games') startMovies(a);
@@ -1093,7 +1171,7 @@ body.portrait .marquee{font-size:24px}
     // after a minute and a half of no taps, close details and go back to this week
     clearTimeout(idleTimer); idleTimer = setTimeout(onIdle, IDLE_RESET);
     var t = ev.target, act = t.closest('[data-act]'), item = t.closest('[data-i]'), day = t.closest('[data-day]'), poster = t.closest('[data-mv]');
-    if (t.closest('#pinForm')) return;
+    if (t.closest('#pinForm') || t.closest('#codeForm')) return;
     if (t.closest('#kicker')) {
       var nowT = Date.now();
       if (nowT - S.kickerTapAt < 450) { S.kickerTapAt = 0; if (S.privOn) privOff(); else privOn(); }
